@@ -2,10 +2,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
 	pb "github.com/accretional/proto-repo/genpb"
 	"github.com/accretional/proto-repo/importer"
@@ -37,8 +40,20 @@ func main() {
 		log.Fatalf("subcommands.New: %v", err)
 	}
 	pb.RegisterSubCommandsServer(s, sc)
+
+	// Trap SIGINT/SIGTERM and ask the gRPC server to drain — in-flight
+	// unary calls and streaming responses finish before Serve returns.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		log.Printf("shutdown signal received, draining...")
+		s.GracefulStop()
+	}()
+
 	log.Printf("importerd listening on %s (scratch=%s)", *addr, *scratchDir)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("serve: %v", err)
 	}
+	log.Printf("importerd stopped cleanly")
 }
