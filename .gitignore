@@ -36,3 +36,11 @@ go.work.sum
 /out/
 *.sqlite
 *.sqlite-journal
+
+# Locally-built command binaries (go build ./cmd/<name> drops the bin in repo root).
+/ghbackup
+/importerd
+/indexer
+
+# Claude Code local state.
+/.claude/

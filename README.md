@@ -32,20 +32,34 @@ Starts `importerd`, which registers both the `Importer` and `SubCommands`
 services on a single gRPC listener. SIGINT/SIGTERM trigger `GracefulStop` so
 in-flight streams drain cleanly.
 
-## Mirror a whole GitHub account
+## Mirror GitHub repos locally
 
 ```
+# Mode 1 — everything under a user/org:
 ./LET_IT_RIP.sh ghbackup --owner <login> --dest <dir>
    [--include-forks] [--include-archived]
+
+# Mode 2 — an explicit list (one `owner/name` or github URL per line;
+# '#' introduces a comment):
+./LET_IT_RIP.sh ghbackup --list-file <path> --dest <dir>
 ```
 
-`cmd/ghbackup` is a thin CLI around `Importer.Download` with a `gh_owner`
-source. It clones every repo under the given user/org into `<dest>/<name>`,
-and is incremental — re-running fetches and fast-forwards existing
-checkouts rather than re-cloning. Auth uses `$GH_TOKEN`, `$GITHUB_TOKEN`,
-or `gh auth token` (in that order); git itself authenticates through
-whatever credential helper is configured, so run `gh auth setup-git` once
-if private clones prompt for a password.
+`cmd/ghbackup` is a thin CLI around `Importer.Download`. It clones each
+repo into `<dest>/<name>` and is incremental — re-running fetches and
+fast-forwards existing checkouts rather than re-cloning. Auth uses
+`$GH_TOKEN`, `$GITHUB_TOKEN`, or `gh auth token` (in that order); git
+itself authenticates through whatever credential helper is configured,
+so run `gh auth setup-git` once if private clones prompt for a password.
+
+Cron-friendly flags:
+
+- `--quiet` suppresses per-repo "ok" lines; failures + final summary
+  still print.
+- `--lock-file <path>` acquires an `O_EXCL` lock before running; if the
+  file already exists another run is assumed to be active and ghbackup
+  exits 0 without doing work. Stale locks need manual cleanup — the
+  tradeoff for never running two concurrent mirrors against the same
+  `--dest`.
 
 ## Two ways to call SubCommands
 
