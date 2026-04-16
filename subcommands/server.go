@@ -48,6 +48,37 @@ func (s *Server) run(ctx context.Context, r *pb.Repo, sub string, args ...string
 	return msg
 }
 
+// runClone is run() for `git clone`: it runs outside any repo dir, uses the
+// resolved clone URL + destination from the request, and mkdirs ScratchDir
+// (the clone destination's parent) so a first-time clone works on a clean
+// host. User-supplied args go between `clone` and the URL/dest so callers
+// can pass `--depth=1` etc. without being able to override where the repo
+// lands. Rejects path-source repos — a local checkout has nothing to clone.
+func (s *Server) runClone(ctx context.Context, r *pb.Repo, args ...string) *pb.RepoMsg {
+	msg := gitexec.NewMsg(r)
+	rv, err := gitexec.Resolve(s.ScratchDir, r)
+	if err != nil {
+		msg.Errs = append(msg.Errs, err.Error())
+		return msg
+	}
+	if rv.Explicit {
+		msg.Errs = append(msg.Errs, "cannot clone a path-source repo; it is already local")
+		return msg
+	}
+	if rv.CloneURL == "" {
+		msg.Errs = append(msg.Errs, "repo has no clone URL")
+		return msg
+	}
+	if err := os.MkdirAll(s.ScratchDir, 0o755); err != nil {
+		msg.Errs = append(msg.Errs, fmt.Sprintf("mkdir %s: %v", s.ScratchDir, err))
+		return msg
+	}
+	argv := append([]string{"clone"}, args...)
+	argv = append(argv, rv.CloneURL, rv.Path)
+	gitexec.Exec(ctx, "", msg, argv...)
+	return msg
+}
+
 // runMkdir is run() for subcommands like `init` whose target dir may not yet
 // exist — it ensures the dir is present before invoking git.
 func (s *Server) runMkdir(ctx context.Context, r *pb.Repo, sub string, args ...string) *pb.RepoMsg {

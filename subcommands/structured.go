@@ -20,8 +20,13 @@ func (s *Server) Execute(ctx context.Context, req *pb.Subcommand) (*pb.RepoMsg, 
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg, nil
 	}
-	if sub == "init" {
+	switch sub {
+	case "init":
 		return s.runMkdir(ctx, req.GetRepo(), sub, argv...), nil
+	case "clone":
+		// runClone supplies the `clone` verb, URL, and destination; argv is
+		// just the user-facing flags.
+		return s.runClone(ctx, req.GetRepo(), argv...), nil
 	}
 	return s.run(ctx, req.GetRepo(), sub, argv...), nil
 }
@@ -99,6 +104,12 @@ func buildArgv(req *pb.Subcommand) (string, []string, error) {
 		return "tag", argvTag(a.Tag), nil
 	case *pb.Subcommand_Worktree:
 		return "worktree", argvWorktree(a.Worktree), nil
+	case *pb.Subcommand_Clone:
+		return "clone", argvClone(a.Clone), nil
+	case *pb.Subcommand_Fetch:
+		return "fetch", argvFetch(a.Fetch), nil
+	case *pb.Subcommand_Pull:
+		return "pull", argvPull(a.Pull), nil
 	case nil:
 		return "", nil, fmt.Errorf("Subcommand.args oneof is empty")
 	default:
@@ -1876,4 +1887,171 @@ func argvWorktree(a *pb.GitWorktreeArguments) []string {
 		args = append(args, np)
 	}
 	return append(args, a.GetPaths()...)
+}
+
+// ---- git clone ------------------------------------------------------------
+// Unlike the other builders, this one does NOT emit the positional URL or
+// destination — runClone supplies those from Resolve(). Callers can't
+// override where the repo lands.
+func argvClone(a *pb.GitCloneArguments) []string {
+	var args []string
+	if a == nil {
+		return args
+	}
+	args = addFlagIfTrue(args, "--bare", a.GetBare())
+	args = addFlagIfTrue(args, "--mirror", a.GetMirror())
+	args = addEqVal(args, "--origin", a.GetOrigin())
+	args = addEqVal(args, "--branch", a.GetBranch())
+	args = addEqVal(args, "--upload-pack", a.GetUploadPack())
+	args = addEqVal(args, "--template", a.GetTemplate())
+	args = addEqVal(args, "--reference", a.GetReference())
+	args = addFlagIfTrue(args, "--dissociate", a.GetDissociate())
+	if d := a.GetDepth(); d > 0 {
+		args = append(args, "--depth="+strconv.Itoa(int(d)))
+	}
+	args = addEqVal(args, "--shallow-since", a.GetShallowSince())
+	for _, e := range a.GetShallowExclude() {
+		args = append(args, "--shallow-exclude="+e)
+	}
+	args = addTriBool(args, "--single-branch", "--no-single-branch", a.GetSingleBranch())
+	args = addFlagIfTrue(args, "--no-tags", a.GetNoTags())
+	if f, ok := recurseSubFlag(a.GetRecurseSubmodules()); ok {
+		args = append(args, f)
+	}
+	args = addFlagIfTrue(args, "--shallow-submodules", a.GetShallowSubmodules())
+	args = addFlagIfTrue(args, "--remote-submodules", a.GetRemoteSubmodules())
+	args = addEqVal(args, "--separate-git-dir", a.GetSeparateGitDir())
+	if j := a.GetJobs(); j > 0 {
+		args = append(args, "-j", strconv.Itoa(int(j)))
+	}
+	args = addEqVal(args, "--filter", a.GetFilter())
+	args = addFlagIfTrue(args, "--progress", a.GetProgress())
+	args = addFlagIfTrue(args, "--quiet", a.GetQuiet())
+	args = addFlagIfTrue(args, "--verbose", a.GetVerbose())
+	args = addFlagIfTrue(args, "--sparse", a.GetSparse())
+	return args
+}
+
+// ---- git fetch ------------------------------------------------------------
+func argvFetch(a *pb.GitFetchArguments) []string {
+	var args []string
+	if a == nil {
+		return args
+	}
+	args = addFlagIfTrue(args, "--all", a.GetAll())
+	args = addFlagIfTrue(args, "--append", a.GetAppend())
+	args = addFlagIfTrue(args, "--atomic", a.GetAtomic())
+	if d := a.GetDepth(); d > 0 {
+		args = append(args, "--depth="+strconv.Itoa(int(d)))
+	}
+	if d := a.GetDeepen(); d > 0 {
+		args = append(args, "--deepen="+strconv.Itoa(int(d)))
+	}
+	args = addEqVal(args, "--shallow-since", a.GetShallowSince())
+	for _, e := range a.GetShallowExclude() {
+		args = append(args, "--shallow-exclude="+e)
+	}
+	args = addFlagIfTrue(args, "--unshallow", a.GetUnshallow())
+	args = addFlagIfTrue(args, "--update-shallow", a.GetUpdateShallow())
+	args = addFlagIfTrue(args, "--prune", a.GetPrune())
+	args = addFlagIfTrue(args, "--prune-tags", a.GetPruneTags())
+	args = addTriBool(args, "--tags", "--no-tags", a.GetTags())
+	// no-tags field kept for callers that only set it positively; avoid
+	// double-emitting if Tags already expressed it.
+	if a.GetTags() == pb.OptBool_OPT_BOOL_UNSPECIFIED {
+		args = addFlagIfTrue(args, "--no-tags", a.GetNoTags())
+	}
+	args = addFlagIfTrue(args, "--refetch", a.GetRefetch())
+	args = addFlagIfTrue(args, "--force", a.GetForce())
+	args = addFlagIfTrue(args, "--keep", a.GetKeep())
+	args = addFlagIfTrue(args, "--multiple", a.GetMultiple())
+	if f, ok := recurseSubFlag(a.GetRecurseSubmodules()); ok {
+		args = append(args, f)
+	}
+	args = addFlagIfTrue(args, "--set-upstream", a.GetSetUpstream())
+	if j := a.GetJobs(); j > 0 {
+		args = append(args, "-j", strconv.Itoa(int(j)))
+	}
+	args = addFlagIfTrue(args, "--dry-run", a.GetDryRun())
+	args = addTriBool(args, "--write-fetch-head", "--no-write-fetch-head", a.GetWriteFetchHead())
+	if a.GetWriteFetchHead() == pb.OptBool_OPT_BOOL_UNSPECIFIED {
+		args = addFlagIfTrue(args, "--no-write-fetch-head", a.GetNoWriteFetchHead())
+	}
+	args = addFlagIfTrue(args, "--quiet", a.GetQuiet())
+	args = addFlagIfTrue(args, "--verbose", a.GetVerbose())
+	args = addFlagIfTrue(args, "--progress", a.GetProgress())
+	args = addFlagIfTrue(args, "-4", a.GetIpv4())
+	args = addFlagIfTrue(args, "-6", a.GetIpv6())
+	args = addEqVal(args, "--upload-pack", a.GetUploadPack())
+	args = addEqVal(args, "--server-option", a.GetServerOption())
+	if r := a.GetRepository(); r != "" {
+		args = append(args, r)
+	}
+	return append(args, a.GetRefspecs()...)
+}
+
+// ---- git pull -------------------------------------------------------------
+func argvPull(a *pb.GitPullArguments) []string {
+	var args []string
+	if a == nil {
+		return args
+	}
+	if f, ok := fastForwardFlag(a.GetFastForward()); ok {
+		args = append(args, f)
+	}
+	// rebase_mode carries the --rebase=<value> variants; no_rebase emits
+	// --no-rebase. They're mutually exclusive; callers set one.
+	if rm := a.GetRebaseMode(); rm != "" {
+		args = append(args, "--rebase="+rm)
+	} else {
+		args = addFlagIfTrue(args, "--no-rebase", a.GetNoRebase())
+	}
+	if d := a.GetDepth(); d > 0 {
+		args = append(args, "--depth="+strconv.Itoa(int(d)))
+	}
+	args = addFlagIfTrue(args, "--unshallow", a.GetUnshallow())
+	args = addEqVal(args, "--shallow-since", a.GetShallowSince())
+	for _, e := range a.GetShallowExclude() {
+		args = append(args, "--shallow-exclude="+e)
+	}
+	args = addTriBool(args, "--commit", "--no-commit", a.GetCommit())
+	args = addTriBool(args, "--edit", "--no-edit", a.GetEdit())
+	args = addTriBool(args, "--stat", "--no-stat", a.GetStat())
+	args = addTriBool(args, "--squash", "--no-squash", a.GetSquash())
+	args = addFlagIfTrue(args, "--verify-signatures", a.GetVerifySignatures())
+	args = addFlagIfTrue(args, "--signoff", a.GetSignoff())
+	args = addGpgSign(args, a.GetGpgSign())
+	args = addTriBool(args, "--autostash", "--no-autostash", a.GetAutostash())
+	args = addFlagIfTrue(args, "--allow-unrelated-histories", a.GetAllowUnrelatedHistories())
+	for _, s := range a.GetStrategy() {
+		args = append(args, "-s", s)
+	}
+	for _, o := range a.GetStrategyOption() {
+		args = append(args, "-X", o)
+	}
+	args = addFlagIfTrue(args, "--all", a.GetAll())
+	args = addFlagIfTrue(args, "--append", a.GetAppend())
+	args = addFlagIfTrue(args, "--prune", a.GetPrune())
+	args = addTriBool(args, "--tags", "--no-tags", a.GetTags())
+	if a.GetTags() == pb.OptBool_OPT_BOOL_UNSPECIFIED {
+		args = addFlagIfTrue(args, "--no-tags", a.GetNoTags())
+	}
+	if f, ok := recurseSubFlag(a.GetRecurseSubmodules()); ok {
+		args = append(args, f)
+	}
+	if j := a.GetJobs(); j > 0 {
+		args = append(args, "-j", strconv.Itoa(int(j)))
+	}
+	args = addFlagIfTrue(args, "--force", a.GetForce())
+	args = addFlagIfTrue(args, "--keep", a.GetKeep())
+	args = addFlagIfTrue(args, "-4", a.GetIpv4())
+	args = addFlagIfTrue(args, "-6", a.GetIpv6())
+	args = addFlagIfTrue(args, "--quiet", a.GetQuiet())
+	args = addFlagIfTrue(args, "--verbose", a.GetVerbose())
+	args = addFlagIfTrue(args, "--progress", a.GetProgress())
+	args = addEqVal(args, "--upload-pack", a.GetUploadPack())
+	if r := a.GetRepository(); r != "" {
+		args = append(args, r)
+	}
+	return append(args, a.GetRefspecs()...)
 }

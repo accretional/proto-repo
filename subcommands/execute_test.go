@@ -509,3 +509,103 @@ func TestExecuteWorktree(t *testing.T) {
 		t.Error("worktree list should print at least the main worktree")
 	}
 }
+
+// seedBareUpstream initializes a bare repo under scratch and seeds it with
+// one commit pushed from a sibling source checkout. Returns the bare repo's
+// path (suitable for use as a file:// clone URL).
+func seedBareUpstream(t *testing.T, client pb.SubCommandsClient, ctx context.Context, scratch string) string {
+	t.Helper()
+	bare := filepath.Join(scratch, "upstream.git")
+	if err := os.MkdirAll(bare, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, client, ctx, "init-bare", &pb.Subcommand{Repo: pathRepo(bare),
+		Args: &pb.Subcommand_Init{Init: &pb.GitInitArguments{
+			Bare: pb.OptBool_OPT_BOOL_TRUE, InitialBranch: "main",
+		}}})
+
+	src := filepath.Join(scratch, "src")
+	srcRepo := pathRepo(src)
+	mustExec(t, client, ctx, "init-src", &pb.Subcommand{Repo: srcRepo,
+		Args: &pb.Subcommand_Init{Init: &pb.GitInitArguments{InitialBranch: "main"}}})
+	if err := os.WriteFile(filepath.Join(src, "seed"), []byte("1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, client, ctx, "add-src", &pb.Subcommand{Repo: srcRepo,
+		Args: &pb.Subcommand_Add{Add: &pb.GitAddArguments{Pathspec: &pb.Pathspec{Pathspec: []string{"."}}}}})
+	mustExec(t, client, ctx, "commit-src", &pb.Subcommand{Repo: srcRepo,
+		Args: &pb.Subcommand_Commit{Commit: &pb.GitCommitArguments{Message: &pb.MessageSource{Message: []string{"seed"}}}}})
+	mustExec(t, client, ctx, "push-src", &pb.Subcommand{Repo: srcRepo,
+		Args: &pb.Subcommand_Push{Push: &pb.GitPushArguments{
+			Repository: bare, Refspec: []string{"main:main"},
+		}}})
+	return bare
+}
+
+func TestExecuteClone(t *testing.T) {
+	execEnv(t)
+	client, ctx, scratch := execClient(t)
+	bare := seedBareUpstream(t, client, ctx, scratch)
+
+	// uri-source clone; runClone places it at <scratch>/upstream (name
+	// derived from the URI, stripping the trailing .git).
+	r := &pb.Repo{Source: &pb.RepoSource{Source: &pb.RepoSource_Uri{Uri: "file://" + bare}}}
+	mustExec(t, client, ctx, "clone", &pb.Subcommand{Repo: r,
+		Args: &pb.Subcommand_Clone{Clone: &pb.GitCloneArguments{
+			Depth: 1, Quiet: pb.OptBool_OPT_BOOL_TRUE,
+		}}})
+	if _, err := os.Stat(filepath.Join(scratch, "upstream", ".git")); err != nil {
+		t.Fatalf("clone did not produce a checkout: %v", err)
+	}
+}
+
+func TestExecuteCloneRejectsPathSource(t *testing.T) {
+	// Path-source repos are already local; cloning is nonsensical. The
+	// builder should reach runClone which rejects with a structured Errs
+	// entry (no gRPC error).
+	execEnv(t)
+	client, ctx, scratch := execClient(t)
+	msg, err := client.Execute(ctx, &pb.Subcommand{Repo: pathRepo(filepath.Join(scratch, "nope")),
+		Args: &pb.Subcommand_Clone{Clone: &pb.GitCloneArguments{}}})
+	if err != nil {
+		t.Fatalf("gRPC err: %v", err)
+	}
+	if len(msg.GetErrs()) == 0 {
+		t.Fatal("expected an error for path-source clone, got none")
+	}
+}
+
+// cloneUpstream clones the seeded bare upstream into <scratch>/upstream via
+// the SubCommands.Clone RPC and returns the resulting Repo pointing at that
+// checkout (as a path-source so subsequent RPCs operate on it directly).
+func cloneUpstream(t *testing.T, client pb.SubCommandsClient, ctx context.Context, scratch, bare string) *pb.Repo {
+	t.Helper()
+	cloneRepo := &pb.Repo{Source: &pb.RepoSource{Source: &pb.RepoSource_Uri{Uri: "file://" + bare}}}
+	mustExec(t, client, ctx, "clone", &pb.Subcommand{Repo: cloneRepo,
+		Args: &pb.Subcommand_Clone{Clone: &pb.GitCloneArguments{Quiet: pb.OptBool_OPT_BOOL_TRUE}}})
+	return pathRepo(filepath.Join(scratch, "upstream"))
+}
+
+func TestExecuteFetch(t *testing.T) {
+	execEnv(t)
+	client, ctx, scratch := execClient(t)
+	bare := seedBareUpstream(t, client, ctx, scratch)
+	r := cloneUpstream(t, client, ctx, scratch, bare)
+
+	mustExec(t, client, ctx, "fetch", &pb.Subcommand{Repo: r,
+		Args: &pb.Subcommand_Fetch{Fetch: &pb.GitFetchArguments{
+			All: pb.OptBool_OPT_BOOL_TRUE, Prune: pb.OptBool_OPT_BOOL_TRUE,
+		}}})
+}
+
+func TestExecutePull(t *testing.T) {
+	execEnv(t)
+	client, ctx, scratch := execClient(t)
+	bare := seedBareUpstream(t, client, ctx, scratch)
+	r := cloneUpstream(t, client, ctx, scratch, bare)
+
+	mustExec(t, client, ctx, "pull", &pb.Subcommand{Repo: r,
+		Args: &pb.Subcommand_Pull{Pull: &pb.GitPullArguments{
+			FastForward: pb.FastForward_FAST_FORWARD_ONLY,
+		}}})
+}

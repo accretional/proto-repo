@@ -29,9 +29,11 @@ const (
 	SubCommands_Checkout_FullMethodName       = "/subcommands.SubCommands/Checkout"
 	SubCommands_CherryPick_FullMethodName     = "/subcommands.SubCommands/CherryPick"
 	SubCommands_Clean_FullMethodName          = "/subcommands.SubCommands/Clean"
+	SubCommands_Clone_FullMethodName          = "/subcommands.SubCommands/Clone"
 	SubCommands_Commit_FullMethodName         = "/subcommands.SubCommands/Commit"
 	SubCommands_Describe_FullMethodName       = "/subcommands.SubCommands/Describe"
 	SubCommands_Diff_FullMethodName           = "/subcommands.SubCommands/Diff"
+	SubCommands_Fetch_FullMethodName          = "/subcommands.SubCommands/Fetch"
 	SubCommands_Gc_FullMethodName             = "/subcommands.SubCommands/Gc"
 	SubCommands_Init_FullMethodName           = "/subcommands.SubCommands/Init"
 	SubCommands_Log_FullMethodName            = "/subcommands.SubCommands/Log"
@@ -39,6 +41,7 @@ const (
 	SubCommands_Merge_FullMethodName          = "/subcommands.SubCommands/Merge"
 	SubCommands_Mv_FullMethodName             = "/subcommands.SubCommands/Mv"
 	SubCommands_Notes_FullMethodName          = "/subcommands.SubCommands/Notes"
+	SubCommands_Pull_FullMethodName           = "/subcommands.SubCommands/Pull"
 	SubCommands_Push_FullMethodName           = "/subcommands.SubCommands/Push"
 	SubCommands_RangeDiff_FullMethodName      = "/subcommands.SubCommands/RangeDiff"
 	SubCommands_Rebase_FullMethodName         = "/subcommands.SubCommands/Rebase"
@@ -78,9 +81,11 @@ type SubCommandsClient interface {
 	Checkout(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	CherryPick(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Clean(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
+	Clone(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Commit(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Describe(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Diff(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
+	Fetch(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Gc(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Init(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Log(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
@@ -88,6 +93,7 @@ type SubCommandsClient interface {
 	Merge(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Mv(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Notes(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
+	Pull(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Push(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	RangeDiff(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Rebase(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
@@ -214,6 +220,16 @@ func (c *subCommandsClient) Clean(ctx context.Context, in *SubCommandReq, opts .
 	return out, nil
 }
 
+func (c *subCommandsClient) Clone(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepoMsg)
+	err := c.cc.Invoke(ctx, SubCommands_Clone_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *subCommandsClient) Commit(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RepoMsg)
@@ -238,6 +254,16 @@ func (c *subCommandsClient) Diff(ctx context.Context, in *SubCommandReq, opts ..
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RepoMsg)
 	err := c.cc.Invoke(ctx, SubCommands_Diff_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subCommandsClient) Fetch(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepoMsg)
+	err := c.cc.Invoke(ctx, SubCommands_Fetch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +334,16 @@ func (c *subCommandsClient) Notes(ctx context.Context, in *SubCommandReq, opts .
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RepoMsg)
 	err := c.cc.Invoke(ctx, SubCommands_Notes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subCommandsClient) Pull(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepoMsg)
+	err := c.cc.Invoke(ctx, SubCommands_Pull_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -495,9 +531,11 @@ type SubCommandsServer interface {
 	Checkout(context.Context, *SubCommandReq) (*RepoMsg, error)
 	CherryPick(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Clean(context.Context, *SubCommandReq) (*RepoMsg, error)
+	Clone(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Commit(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Describe(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Diff(context.Context, *SubCommandReq) (*RepoMsg, error)
+	Fetch(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Gc(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Init(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Log(context.Context, *SubCommandReq) (*RepoMsg, error)
@@ -505,6 +543,7 @@ type SubCommandsServer interface {
 	Merge(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Mv(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Notes(context.Context, *SubCommandReq) (*RepoMsg, error)
+	Pull(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Push(context.Context, *SubCommandReq) (*RepoMsg, error)
 	RangeDiff(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Rebase(context.Context, *SubCommandReq) (*RepoMsg, error)
@@ -561,6 +600,9 @@ func (UnimplementedSubCommandsServer) CherryPick(context.Context, *SubCommandReq
 func (UnimplementedSubCommandsServer) Clean(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Clean not implemented")
 }
+func (UnimplementedSubCommandsServer) Clone(context.Context, *SubCommandReq) (*RepoMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Clone not implemented")
+}
 func (UnimplementedSubCommandsServer) Commit(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
 }
@@ -569,6 +611,9 @@ func (UnimplementedSubCommandsServer) Describe(context.Context, *SubCommandReq) 
 }
 func (UnimplementedSubCommandsServer) Diff(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Diff not implemented")
+}
+func (UnimplementedSubCommandsServer) Fetch(context.Context, *SubCommandReq) (*RepoMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Fetch not implemented")
 }
 func (UnimplementedSubCommandsServer) Gc(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Gc not implemented")
@@ -590,6 +635,9 @@ func (UnimplementedSubCommandsServer) Mv(context.Context, *SubCommandReq) (*Repo
 }
 func (UnimplementedSubCommandsServer) Notes(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Notes not implemented")
+}
+func (UnimplementedSubCommandsServer) Pull(context.Context, *SubCommandReq) (*RepoMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pull not implemented")
 }
 func (UnimplementedSubCommandsServer) Push(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Push not implemented")
@@ -840,6 +888,24 @@ func _SubCommands_Clean_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubCommands_Clone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubCommandReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubCommandsServer).Clone(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubCommands_Clone_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubCommandsServer).Clone(ctx, req.(*SubCommandReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SubCommands_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubCommandReq)
 	if err := dec(in); err != nil {
@@ -890,6 +956,24 @@ func _SubCommands_Diff_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SubCommandsServer).Diff(ctx, req.(*SubCommandReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubCommands_Fetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubCommandReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubCommandsServer).Fetch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubCommands_Fetch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubCommandsServer).Fetch(ctx, req.(*SubCommandReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1016,6 +1100,24 @@ func _SubCommands_Notes_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(SubCommandsServer).Notes(ctx, req.(*SubCommandReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubCommands_Pull_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubCommandReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubCommandsServer).Pull(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubCommands_Pull_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubCommandsServer).Pull(ctx, req.(*SubCommandReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1356,6 +1458,10 @@ var SubCommands_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SubCommands_Clean_Handler,
 		},
 		{
+			MethodName: "Clone",
+			Handler:    _SubCommands_Clone_Handler,
+		},
+		{
 			MethodName: "Commit",
 			Handler:    _SubCommands_Commit_Handler,
 		},
@@ -1366,6 +1472,10 @@ var SubCommands_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Diff",
 			Handler:    _SubCommands_Diff_Handler,
+		},
+		{
+			MethodName: "Fetch",
+			Handler:    _SubCommands_Fetch_Handler,
 		},
 		{
 			MethodName: "Gc",
@@ -1394,6 +1504,10 @@ var SubCommands_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Notes",
 			Handler:    _SubCommands_Notes_Handler,
+		},
+		{
+			MethodName: "Pull",
+			Handler:    _SubCommands_Pull_Handler,
 		},
 		{
 			MethodName: "Push",

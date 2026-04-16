@@ -504,3 +504,103 @@ func TestArgvWorktree(t *testing.T) {
 		t.Errorf("add: got %v\nwant %v", got, want)
 	}
 }
+
+func TestArgvClone(t *testing.T) {
+	// argvClone emits ONLY the flags — runClone supplies the URL and dest.
+	got := argvClone(&pb.GitCloneArguments{
+		Depth:            1,
+		Branch:           "main",
+		SingleBranch:     pb.OptBool_OPT_BOOL_TRUE,
+		NoTags:           pb.OptBool_OPT_BOOL_TRUE,
+		Filter:           "blob:none",
+		Quiet:            pb.OptBool_OPT_BOOL_TRUE,
+		RecurseSubmodules: pb.RecurseSubmodules_RECURSE_SUBMODULES_ON_DEMAND,
+	})
+	want := []string{
+		"--branch=main",
+		"--depth=1",
+		"--single-branch",
+		"--no-tags",
+		"--recurse-submodules=on-demand",
+		"--filter=blob:none",
+		"--quiet",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}
+
+func TestArgvCloneNil(t *testing.T) {
+	if got := argvClone(nil); len(got) != 0 {
+		t.Errorf("nil input should return empty args, got %v", got)
+	}
+}
+
+func TestArgvFetch(t *testing.T) {
+	got := argvFetch(&pb.GitFetchArguments{
+		All:        pb.OptBool_OPT_BOOL_TRUE,
+		Prune:      pb.OptBool_OPT_BOOL_TRUE,
+		Tags:       pb.OptBool_OPT_BOOL_TRUE,
+		Depth:      10,
+		Jobs:       4,
+		Force:      pb.OptBool_OPT_BOOL_TRUE,
+		Repository: "origin",
+		Refspecs:   []string{"main", "dev"},
+	})
+	want := []string{
+		"--all", "--depth=10", "--prune", "--tags", "--force",
+		"-j", "4",
+		"origin", "main", "dev",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}
+
+func TestArgvFetchTagsFalseDoesNotDoubleEmit(t *testing.T) {
+	// Setting Tags=FALSE should emit --no-tags once; NoTags must be ignored
+	// when Tags is already expressed.
+	got := argvFetch(&pb.GitFetchArguments{
+		Tags:   pb.OptBool_OPT_BOOL_FALSE,
+		NoTags: pb.OptBool_OPT_BOOL_TRUE,
+	})
+	want := []string{"--no-tags"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}
+
+func TestArgvPull(t *testing.T) {
+	got := argvPull(&pb.GitPullArguments{
+		FastForward: pb.FastForward_FAST_FORWARD_ONLY,
+		Autostash:   pb.OptBool_OPT_BOOL_TRUE,
+		Quiet:       pb.OptBool_OPT_BOOL_TRUE,
+		Repository:  "origin",
+		Refspecs:    []string{"main"},
+	})
+	want := []string{"--ff-only", "--autostash", "--quiet", "origin", "main"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}
+
+func TestArgvPullRebaseMode(t *testing.T) {
+	// rebase_mode takes precedence over no_rebase; setting both should emit
+	// only --rebase=<mode>.
+	got := argvPull(&pb.GitPullArguments{
+		RebaseMode: "interactive",
+		NoRebase:   pb.OptBool_OPT_BOOL_TRUE,
+	})
+	want := []string{"--rebase=interactive"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}
+
+func TestArgvPullNoRebaseWhenRebaseModeUnset(t *testing.T) {
+	got := argvPull(&pb.GitPullArguments{NoRebase: pb.OptBool_OPT_BOOL_TRUE})
+	want := []string{"--no-rebase"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v\nwant %v", got, want)
+	}
+}

@@ -36,9 +36,11 @@ service SubCommands {
   rpc Checkout(SubCommandReq) returns (repo.RepoMsg);
   rpc CherryPick(SubCommandReq) returns (repo.RepoMsg);
   rpc Clean(SubCommandReq) returns (repo.RepoMsg);
+  rpc Clone(SubCommandReq) returns (repo.RepoMsg);
   rpc Commit(SubCommandReq) returns (repo.RepoMsg);
   rpc Describe(SubCommandReq) returns (repo.RepoMsg);
   rpc Diff(SubCommandReq) returns (repo.RepoMsg);
+  rpc Fetch(SubCommandReq) returns (repo.RepoMsg);
   rpc Gc(SubCommandReq) returns (repo.RepoMsg);
   rpc Init(SubCommandReq) returns (repo.RepoMsg);
   rpc Log(SubCommandReq) returns (repo.RepoMsg);
@@ -46,6 +48,7 @@ service SubCommands {
   rpc Merge(SubCommandReq) returns (repo.RepoMsg);
   rpc Mv(SubCommandReq) returns (repo.RepoMsg);
   rpc Notes(SubCommandReq) returns (repo.RepoMsg);
+  rpc Pull(SubCommandReq) returns (repo.RepoMsg);
   rpc Push(SubCommandReq) returns (repo.RepoMsg);
   rpc RangeDiff(SubCommandReq) returns (repo.RepoMsg);
   rpc Rebase(SubCommandReq) returns (repo.RepoMsg);

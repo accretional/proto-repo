@@ -67,6 +67,9 @@ const (
 	Subcommand_TYPE_SWITCH          Subcommand_Type = 33
 	Subcommand_TYPE_TAG             Subcommand_Type = 34
 	Subcommand_TYPE_WORKTREE        Subcommand_Type = 35
+	Subcommand_TYPE_CLONE           Subcommand_Type = 36
+	Subcommand_TYPE_FETCH           Subcommand_Type = 37
+	Subcommand_TYPE_PULL            Subcommand_Type = 38
 )
 
 // Enum value maps for Subcommand_Type.
@@ -108,6 +111,9 @@ var (
 		33: "TYPE_SWITCH",
 		34: "TYPE_TAG",
 		35: "TYPE_WORKTREE",
+		36: "TYPE_CLONE",
+		37: "TYPE_FETCH",
+		38: "TYPE_PULL",
 	}
 	Subcommand_Type_value = map[string]int32{
 		"TYPE_UNSPECIFIED":     0,
@@ -146,6 +152,9 @@ var (
 		"TYPE_SWITCH":          33,
 		"TYPE_TAG":             34,
 		"TYPE_WORKTREE":        35,
+		"TYPE_CLONE":           36,
+		"TYPE_FETCH":           37,
+		"TYPE_PULL":            38,
 	}
 )
 
@@ -953,6 +962,9 @@ type Subcommand struct {
 	//	*Subcommand_Switch
 	//	*Subcommand_Tag
 	//	*Subcommand_Worktree
+	//	*Subcommand_Clone
+	//	*Subcommand_Fetch
+	//	*Subcommand_Pull
 	Args          isSubcommand_Args `protobuf_oneof:"args"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1324,6 +1336,33 @@ func (x *Subcommand) GetWorktree() *GitWorktreeArguments {
 	return nil
 }
 
+func (x *Subcommand) GetClone() *GitCloneArguments {
+	if x != nil {
+		if x, ok := x.Args.(*Subcommand_Clone); ok {
+			return x.Clone
+		}
+	}
+	return nil
+}
+
+func (x *Subcommand) GetFetch() *GitFetchArguments {
+	if x != nil {
+		if x, ok := x.Args.(*Subcommand_Fetch); ok {
+			return x.Fetch
+		}
+	}
+	return nil
+}
+
+func (x *Subcommand) GetPull() *GitPullArguments {
+	if x != nil {
+		if x, ok := x.Args.(*Subcommand_Pull); ok {
+			return x.Pull
+		}
+	}
+	return nil
+}
+
 type isSubcommand_Args interface {
 	isSubcommand_Args()
 }
@@ -1468,6 +1507,18 @@ type Subcommand_Worktree struct {
 	Worktree *GitWorktreeArguments `protobuf:"bytes,44,opt,name=worktree,proto3,oneof"`
 }
 
+type Subcommand_Clone struct {
+	Clone *GitCloneArguments `protobuf:"bytes,45,opt,name=clone,proto3,oneof"`
+}
+
+type Subcommand_Fetch struct {
+	Fetch *GitFetchArguments `protobuf:"bytes,46,opt,name=fetch,proto3,oneof"`
+}
+
+type Subcommand_Pull struct {
+	Pull *GitPullArguments `protobuf:"bytes,47,opt,name=pull,proto3,oneof"`
+}
+
 func (*Subcommand_Add) isSubcommand_Args() {}
 
 func (*Subcommand_Archive) isSubcommand_Args() {}
@@ -1537,6 +1588,12 @@ func (*Subcommand_Switch) isSubcommand_Args() {}
 func (*Subcommand_Tag) isSubcommand_Args() {}
 
 func (*Subcommand_Worktree) isSubcommand_Args() {}
+
+func (*Subcommand_Clone) isSubcommand_Args() {}
+
+func (*Subcommand_Fetch) isSubcommand_Args() {}
+
+func (*Subcommand_Pull) isSubcommand_Args() {}
 
 // ---- git add --------------------------------------------------------------
 // git add [--verbose|-v] [--dry-run|-n] [--force|-f] [--interactive|-i]
@@ -9419,12 +9476,847 @@ func (x *GitWorktreeArguments) GetPaths() []string {
 	return nil
 }
 
+// ---- git clone ------------------------------------------------------------
+// The URL and destination come from resolving the request's Repo — callers
+// don't set them here. Only the behavior flags live on this message.
+type GitCloneArguments struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Bare              OptBool                `protobuf:"varint,1,opt,name=bare,proto3,enum=subcommands.OptBool" json:"bare,omitempty"`             // --bare
+	Mirror            OptBool                `protobuf:"varint,2,opt,name=mirror,proto3,enum=subcommands.OptBool" json:"mirror,omitempty"`         // --mirror
+	Origin            string                 `protobuf:"bytes,3,opt,name=origin,proto3" json:"origin,omitempty"`                                   // -o / --origin=<name>
+	Branch            string                 `protobuf:"bytes,4,opt,name=branch,proto3" json:"branch,omitempty"`                                   // -b / --branch=<name>
+	UploadPack        string                 `protobuf:"bytes,5,opt,name=upload_pack,json=uploadPack,proto3" json:"upload_pack,omitempty"`         // -u / --upload-pack=<path>
+	Template          string                 `protobuf:"bytes,6,opt,name=template,proto3" json:"template,omitempty"`                               // --template=<dir>
+	Reference         string                 `protobuf:"bytes,7,opt,name=reference,proto3" json:"reference,omitempty"`                             // --reference=<repo>
+	Dissociate        OptBool                `protobuf:"varint,8,opt,name=dissociate,proto3,enum=subcommands.OptBool" json:"dissociate,omitempty"` // --dissociate (with --reference)
+	Depth             int32                  `protobuf:"varint,9,opt,name=depth,proto3" json:"depth,omitempty"`                                    // --depth=<n> (0 = unset)
+	ShallowSince      string                 `protobuf:"bytes,10,opt,name=shallow_since,json=shallowSince,proto3" json:"shallow_since,omitempty"`  // --shallow-since=<date>
+	ShallowExclude    []string               `protobuf:"bytes,11,rep,name=shallow_exclude,json=shallowExclude,proto3" json:"shallow_exclude,omitempty"`
+	SingleBranch      OptBool                `protobuf:"varint,12,opt,name=single_branch,json=singleBranch,proto3,enum=subcommands.OptBool" json:"single_branch,omitempty"` // --[no-]single-branch
+	NoTags            OptBool                `protobuf:"varint,13,opt,name=no_tags,json=noTags,proto3,enum=subcommands.OptBool" json:"no_tags,omitempty"`                   // --no-tags
+	RecurseSubmodules RecurseSubmodules      `protobuf:"varint,14,opt,name=recurse_submodules,json=recurseSubmodules,proto3,enum=subcommands.RecurseSubmodules" json:"recurse_submodules,omitempty"`
+	ShallowSubmodules OptBool                `protobuf:"varint,15,opt,name=shallow_submodules,json=shallowSubmodules,proto3,enum=subcommands.OptBool" json:"shallow_submodules,omitempty"`
+	RemoteSubmodules  OptBool                `protobuf:"varint,16,opt,name=remote_submodules,json=remoteSubmodules,proto3,enum=subcommands.OptBool" json:"remote_submodules,omitempty"`
+	SeparateGitDir    string                 `protobuf:"bytes,17,opt,name=separate_git_dir,json=separateGitDir,proto3" json:"separate_git_dir,omitempty"` // --separate-git-dir=<dir>
+	Jobs              int32                  `protobuf:"varint,18,opt,name=jobs,proto3" json:"jobs,omitempty"`                                            // -j <n>
+	Filter            string                 `protobuf:"bytes,19,opt,name=filter,proto3" json:"filter,omitempty"`                                         // --filter=<spec>
+	Progress          OptBool                `protobuf:"varint,20,opt,name=progress,proto3,enum=subcommands.OptBool" json:"progress,omitempty"`
+	Quiet             OptBool                `protobuf:"varint,21,opt,name=quiet,proto3,enum=subcommands.OptBool" json:"quiet,omitempty"`
+	Verbose           OptBool                `protobuf:"varint,22,opt,name=verbose,proto3,enum=subcommands.OptBool" json:"verbose,omitempty"`
+	Sparse            OptBool                `protobuf:"varint,23,opt,name=sparse,proto3,enum=subcommands.OptBool" json:"sparse,omitempty"` // --sparse
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GitCloneArguments) Reset() {
+	*x = GitCloneArguments{}
+	mi := &file_subcommand_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GitCloneArguments) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GitCloneArguments) ProtoMessage() {}
+
+func (x *GitCloneArguments) ProtoReflect() protoreflect.Message {
+	mi := &file_subcommand_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GitCloneArguments.ProtoReflect.Descriptor instead.
+func (*GitCloneArguments) Descriptor() ([]byte, []int) {
+	return file_subcommand_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *GitCloneArguments) GetBare() OptBool {
+	if x != nil {
+		return x.Bare
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetMirror() OptBool {
+	if x != nil {
+		return x.Mirror
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetOrigin() string {
+	if x != nil {
+		return x.Origin
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetUploadPack() string {
+	if x != nil {
+		return x.UploadPack
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetTemplate() string {
+	if x != nil {
+		return x.Template
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetReference() string {
+	if x != nil {
+		return x.Reference
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetDissociate() OptBool {
+	if x != nil {
+		return x.Dissociate
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetDepth() int32 {
+	if x != nil {
+		return x.Depth
+	}
+	return 0
+}
+
+func (x *GitCloneArguments) GetShallowSince() string {
+	if x != nil {
+		return x.ShallowSince
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetShallowExclude() []string {
+	if x != nil {
+		return x.ShallowExclude
+	}
+	return nil
+}
+
+func (x *GitCloneArguments) GetSingleBranch() OptBool {
+	if x != nil {
+		return x.SingleBranch
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetNoTags() OptBool {
+	if x != nil {
+		return x.NoTags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetRecurseSubmodules() RecurseSubmodules {
+	if x != nil {
+		return x.RecurseSubmodules
+	}
+	return RecurseSubmodules_RECURSE_SUBMODULES_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetShallowSubmodules() OptBool {
+	if x != nil {
+		return x.ShallowSubmodules
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetRemoteSubmodules() OptBool {
+	if x != nil {
+		return x.RemoteSubmodules
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetSeparateGitDir() string {
+	if x != nil {
+		return x.SeparateGitDir
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetJobs() int32 {
+	if x != nil {
+		return x.Jobs
+	}
+	return 0
+}
+
+func (x *GitCloneArguments) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
+func (x *GitCloneArguments) GetProgress() OptBool {
+	if x != nil {
+		return x.Progress
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetQuiet() OptBool {
+	if x != nil {
+		return x.Quiet
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetVerbose() OptBool {
+	if x != nil {
+		return x.Verbose
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitCloneArguments) GetSparse() OptBool {
+	if x != nil {
+		return x.Sparse
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+// ---- git fetch ------------------------------------------------------------
+type GitFetchArguments struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	All               OptBool                `protobuf:"varint,1,opt,name=all,proto3,enum=subcommands.OptBool" json:"all,omitempty"`       // --all
+	Append            OptBool                `protobuf:"varint,2,opt,name=append,proto3,enum=subcommands.OptBool" json:"append,omitempty"` // --append / -a
+	Atomic            OptBool                `protobuf:"varint,3,opt,name=atomic,proto3,enum=subcommands.OptBool" json:"atomic,omitempty"` // --atomic
+	Depth             int32                  `protobuf:"varint,4,opt,name=depth,proto3" json:"depth,omitempty"`                            // --depth=<n>
+	Deepen            int32                  `protobuf:"varint,5,opt,name=deepen,proto3" json:"deepen,omitempty"`                          // --deepen=<n>
+	ShallowSince      string                 `protobuf:"bytes,6,opt,name=shallow_since,json=shallowSince,proto3" json:"shallow_since,omitempty"`
+	ShallowExclude    []string               `protobuf:"bytes,7,rep,name=shallow_exclude,json=shallowExclude,proto3" json:"shallow_exclude,omitempty"`
+	Unshallow         OptBool                `protobuf:"varint,8,opt,name=unshallow,proto3,enum=subcommands.OptBool" json:"unshallow,omitempty"`
+	UpdateShallow     OptBool                `protobuf:"varint,9,opt,name=update_shallow,json=updateShallow,proto3,enum=subcommands.OptBool" json:"update_shallow,omitempty"`
+	Prune             OptBool                `protobuf:"varint,10,opt,name=prune,proto3,enum=subcommands.OptBool" json:"prune,omitempty"`                          // --prune / -p
+	PruneTags         OptBool                `protobuf:"varint,11,opt,name=prune_tags,json=pruneTags,proto3,enum=subcommands.OptBool" json:"prune_tags,omitempty"` // --prune-tags / -P
+	Tags              OptBool                `protobuf:"varint,12,opt,name=tags,proto3,enum=subcommands.OptBool" json:"tags,omitempty"`                            // --tags
+	NoTags            OptBool                `protobuf:"varint,13,opt,name=no_tags,json=noTags,proto3,enum=subcommands.OptBool" json:"no_tags,omitempty"`          // --no-tags
+	Refetch           OptBool                `protobuf:"varint,14,opt,name=refetch,proto3,enum=subcommands.OptBool" json:"refetch,omitempty"`                      // --refetch
+	Force             OptBool                `protobuf:"varint,15,opt,name=force,proto3,enum=subcommands.OptBool" json:"force,omitempty"`                          // --force / -f
+	Keep              OptBool                `protobuf:"varint,16,opt,name=keep,proto3,enum=subcommands.OptBool" json:"keep,omitempty"`                            // --keep / -k
+	Multiple          OptBool                `protobuf:"varint,17,opt,name=multiple,proto3,enum=subcommands.OptBool" json:"multiple,omitempty"`                    // --multiple
+	RecurseSubmodules RecurseSubmodules      `protobuf:"varint,18,opt,name=recurse_submodules,json=recurseSubmodules,proto3,enum=subcommands.RecurseSubmodules" json:"recurse_submodules,omitempty"`
+	SetUpstream       OptBool                `protobuf:"varint,19,opt,name=set_upstream,json=setUpstream,proto3,enum=subcommands.OptBool" json:"set_upstream,omitempty"` // --set-upstream
+	Jobs              int32                  `protobuf:"varint,20,opt,name=jobs,proto3" json:"jobs,omitempty"`                                                           // -j <n>
+	DryRun            OptBool                `protobuf:"varint,21,opt,name=dry_run,json=dryRun,proto3,enum=subcommands.OptBool" json:"dry_run,omitempty"`
+	WriteFetchHead    OptBool                `protobuf:"varint,22,opt,name=write_fetch_head,json=writeFetchHead,proto3,enum=subcommands.OptBool" json:"write_fetch_head,omitempty"` // --[no-]write-fetch-head
+	NoWriteFetchHead  OptBool                `protobuf:"varint,23,opt,name=no_write_fetch_head,json=noWriteFetchHead,proto3,enum=subcommands.OptBool" json:"no_write_fetch_head,omitempty"`
+	Quiet             OptBool                `protobuf:"varint,24,opt,name=quiet,proto3,enum=subcommands.OptBool" json:"quiet,omitempty"`
+	Verbose           OptBool                `protobuf:"varint,25,opt,name=verbose,proto3,enum=subcommands.OptBool" json:"verbose,omitempty"`
+	Progress          OptBool                `protobuf:"varint,26,opt,name=progress,proto3,enum=subcommands.OptBool" json:"progress,omitempty"`
+	Ipv4              OptBool                `protobuf:"varint,27,opt,name=ipv4,proto3,enum=subcommands.OptBool" json:"ipv4,omitempty"`
+	Ipv6              OptBool                `protobuf:"varint,28,opt,name=ipv6,proto3,enum=subcommands.OptBool" json:"ipv6,omitempty"`
+	UploadPack        string                 `protobuf:"bytes,29,opt,name=upload_pack,json=uploadPack,proto3" json:"upload_pack,omitempty"`       // --upload-pack=<path>
+	ServerOption      string                 `protobuf:"bytes,30,opt,name=server_option,json=serverOption,proto3" json:"server_option,omitempty"` // -o / --server-option=<opt>
+	Repository        string                 `protobuf:"bytes,31,opt,name=repository,proto3" json:"repository,omitempty"`                         // <remote> positional
+	Refspecs          []string               `protobuf:"bytes,32,rep,name=refspecs,proto3" json:"refspecs,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GitFetchArguments) Reset() {
+	*x = GitFetchArguments{}
+	mi := &file_subcommand_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GitFetchArguments) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GitFetchArguments) ProtoMessage() {}
+
+func (x *GitFetchArguments) ProtoReflect() protoreflect.Message {
+	mi := &file_subcommand_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GitFetchArguments.ProtoReflect.Descriptor instead.
+func (*GitFetchArguments) Descriptor() ([]byte, []int) {
+	return file_subcommand_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *GitFetchArguments) GetAll() OptBool {
+	if x != nil {
+		return x.All
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetAppend() OptBool {
+	if x != nil {
+		return x.Append
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetAtomic() OptBool {
+	if x != nil {
+		return x.Atomic
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetDepth() int32 {
+	if x != nil {
+		return x.Depth
+	}
+	return 0
+}
+
+func (x *GitFetchArguments) GetDeepen() int32 {
+	if x != nil {
+		return x.Deepen
+	}
+	return 0
+}
+
+func (x *GitFetchArguments) GetShallowSince() string {
+	if x != nil {
+		return x.ShallowSince
+	}
+	return ""
+}
+
+func (x *GitFetchArguments) GetShallowExclude() []string {
+	if x != nil {
+		return x.ShallowExclude
+	}
+	return nil
+}
+
+func (x *GitFetchArguments) GetUnshallow() OptBool {
+	if x != nil {
+		return x.Unshallow
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetUpdateShallow() OptBool {
+	if x != nil {
+		return x.UpdateShallow
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetPrune() OptBool {
+	if x != nil {
+		return x.Prune
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetPruneTags() OptBool {
+	if x != nil {
+		return x.PruneTags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetTags() OptBool {
+	if x != nil {
+		return x.Tags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetNoTags() OptBool {
+	if x != nil {
+		return x.NoTags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetRefetch() OptBool {
+	if x != nil {
+		return x.Refetch
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetForce() OptBool {
+	if x != nil {
+		return x.Force
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetKeep() OptBool {
+	if x != nil {
+		return x.Keep
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetMultiple() OptBool {
+	if x != nil {
+		return x.Multiple
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetRecurseSubmodules() RecurseSubmodules {
+	if x != nil {
+		return x.RecurseSubmodules
+	}
+	return RecurseSubmodules_RECURSE_SUBMODULES_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetSetUpstream() OptBool {
+	if x != nil {
+		return x.SetUpstream
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetJobs() int32 {
+	if x != nil {
+		return x.Jobs
+	}
+	return 0
+}
+
+func (x *GitFetchArguments) GetDryRun() OptBool {
+	if x != nil {
+		return x.DryRun
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetWriteFetchHead() OptBool {
+	if x != nil {
+		return x.WriteFetchHead
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetNoWriteFetchHead() OptBool {
+	if x != nil {
+		return x.NoWriteFetchHead
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetQuiet() OptBool {
+	if x != nil {
+		return x.Quiet
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetVerbose() OptBool {
+	if x != nil {
+		return x.Verbose
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetProgress() OptBool {
+	if x != nil {
+		return x.Progress
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetIpv4() OptBool {
+	if x != nil {
+		return x.Ipv4
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetIpv6() OptBool {
+	if x != nil {
+		return x.Ipv6
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitFetchArguments) GetUploadPack() string {
+	if x != nil {
+		return x.UploadPack
+	}
+	return ""
+}
+
+func (x *GitFetchArguments) GetServerOption() string {
+	if x != nil {
+		return x.ServerOption
+	}
+	return ""
+}
+
+func (x *GitFetchArguments) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *GitFetchArguments) GetRefspecs() []string {
+	if x != nil {
+		return x.Refspecs
+	}
+	return nil
+}
+
+// ---- git pull -------------------------------------------------------------
+type GitPullArguments struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	FastForward FastForward            `protobuf:"varint,1,opt,name=fast_forward,json=fastForward,proto3,enum=subcommands.FastForward" json:"fast_forward,omitempty"` // --ff / --no-ff / --ff-only
+	// --[no-]rebase; --rebase=false|true|merges|interactive expressed as a
+	// string to carry the 4-value variant without adding a new enum.
+	RebaseMode              string            `protobuf:"bytes,2,opt,name=rebase_mode,json=rebaseMode,proto3" json:"rebase_mode,omitempty"`
+	NoRebase                OptBool           `protobuf:"varint,3,opt,name=no_rebase,json=noRebase,proto3,enum=subcommands.OptBool" json:"no_rebase,omitempty"`
+	Depth                   int32             `protobuf:"varint,4,opt,name=depth,proto3" json:"depth,omitempty"`
+	Unshallow               OptBool           `protobuf:"varint,5,opt,name=unshallow,proto3,enum=subcommands.OptBool" json:"unshallow,omitempty"`
+	ShallowSince            string            `protobuf:"bytes,6,opt,name=shallow_since,json=shallowSince,proto3" json:"shallow_since,omitempty"`
+	ShallowExclude          []string          `protobuf:"bytes,7,rep,name=shallow_exclude,json=shallowExclude,proto3" json:"shallow_exclude,omitempty"`
+	Commit                  OptBool           `protobuf:"varint,8,opt,name=commit,proto3,enum=subcommands.OptBool" json:"commit,omitempty"`  // --[no-]commit
+	Edit                    OptBool           `protobuf:"varint,9,opt,name=edit,proto3,enum=subcommands.OptBool" json:"edit,omitempty"`      // --[no-]edit
+	Stat                    OptBool           `protobuf:"varint,10,opt,name=stat,proto3,enum=subcommands.OptBool" json:"stat,omitempty"`     // --[no-]stat
+	Squash                  OptBool           `protobuf:"varint,11,opt,name=squash,proto3,enum=subcommands.OptBool" json:"squash,omitempty"` // --[no-]squash
+	VerifySignatures        OptBool           `protobuf:"varint,12,opt,name=verify_signatures,json=verifySignatures,proto3,enum=subcommands.OptBool" json:"verify_signatures,omitempty"`
+	Signoff                 OptBool           `protobuf:"varint,13,opt,name=signoff,proto3,enum=subcommands.OptBool" json:"signoff,omitempty"` // --signoff
+	GpgSign                 *GpgSign          `protobuf:"bytes,14,opt,name=gpg_sign,json=gpgSign,proto3" json:"gpg_sign,omitempty"`
+	Autostash               OptBool           `protobuf:"varint,15,opt,name=autostash,proto3,enum=subcommands.OptBool" json:"autostash,omitempty"` // --[no-]autostash
+	AllowUnrelatedHistories OptBool           `protobuf:"varint,16,opt,name=allow_unrelated_histories,json=allowUnrelatedHistories,proto3,enum=subcommands.OptBool" json:"allow_unrelated_histories,omitempty"`
+	Strategy                []string          `protobuf:"bytes,17,rep,name=strategy,proto3" json:"strategy,omitempty"` // -s <strategy>
+	StrategyOption          []string          `protobuf:"bytes,18,rep,name=strategy_option,json=strategyOption,proto3" json:"strategy_option,omitempty"`
+	All                     OptBool           `protobuf:"varint,19,opt,name=all,proto3,enum=subcommands.OptBool" json:"all,omitempty"` // --all
+	Append                  OptBool           `protobuf:"varint,20,opt,name=append,proto3,enum=subcommands.OptBool" json:"append,omitempty"`
+	Prune                   OptBool           `protobuf:"varint,21,opt,name=prune,proto3,enum=subcommands.OptBool" json:"prune,omitempty"`
+	Tags                    OptBool           `protobuf:"varint,22,opt,name=tags,proto3,enum=subcommands.OptBool" json:"tags,omitempty"` // --tags
+	NoTags                  OptBool           `protobuf:"varint,23,opt,name=no_tags,json=noTags,proto3,enum=subcommands.OptBool" json:"no_tags,omitempty"`
+	RecurseSubmodules       RecurseSubmodules `protobuf:"varint,24,opt,name=recurse_submodules,json=recurseSubmodules,proto3,enum=subcommands.RecurseSubmodules" json:"recurse_submodules,omitempty"`
+	Jobs                    int32             `protobuf:"varint,25,opt,name=jobs,proto3" json:"jobs,omitempty"` // -j <n>
+	Force                   OptBool           `protobuf:"varint,26,opt,name=force,proto3,enum=subcommands.OptBool" json:"force,omitempty"`
+	Keep                    OptBool           `protobuf:"varint,27,opt,name=keep,proto3,enum=subcommands.OptBool" json:"keep,omitempty"`
+	Ipv4                    OptBool           `protobuf:"varint,28,opt,name=ipv4,proto3,enum=subcommands.OptBool" json:"ipv4,omitempty"`
+	Ipv6                    OptBool           `protobuf:"varint,29,opt,name=ipv6,proto3,enum=subcommands.OptBool" json:"ipv6,omitempty"`
+	Quiet                   OptBool           `protobuf:"varint,30,opt,name=quiet,proto3,enum=subcommands.OptBool" json:"quiet,omitempty"`
+	Verbose                 OptBool           `protobuf:"varint,31,opt,name=verbose,proto3,enum=subcommands.OptBool" json:"verbose,omitempty"`
+	Progress                OptBool           `protobuf:"varint,32,opt,name=progress,proto3,enum=subcommands.OptBool" json:"progress,omitempty"`
+	UploadPack              string            `protobuf:"bytes,33,opt,name=upload_pack,json=uploadPack,proto3" json:"upload_pack,omitempty"`
+	Repository              string            `protobuf:"bytes,34,opt,name=repository,proto3" json:"repository,omitempty"` // <remote>
+	Refspecs                []string          `protobuf:"bytes,35,rep,name=refspecs,proto3" json:"refspecs,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *GitPullArguments) Reset() {
+	*x = GitPullArguments{}
+	mi := &file_subcommand_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GitPullArguments) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GitPullArguments) ProtoMessage() {}
+
+func (x *GitPullArguments) ProtoReflect() protoreflect.Message {
+	mi := &file_subcommand_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GitPullArguments.ProtoReflect.Descriptor instead.
+func (*GitPullArguments) Descriptor() ([]byte, []int) {
+	return file_subcommand_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *GitPullArguments) GetFastForward() FastForward {
+	if x != nil {
+		return x.FastForward
+	}
+	return FastForward_FAST_FORWARD_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetRebaseMode() string {
+	if x != nil {
+		return x.RebaseMode
+	}
+	return ""
+}
+
+func (x *GitPullArguments) GetNoRebase() OptBool {
+	if x != nil {
+		return x.NoRebase
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetDepth() int32 {
+	if x != nil {
+		return x.Depth
+	}
+	return 0
+}
+
+func (x *GitPullArguments) GetUnshallow() OptBool {
+	if x != nil {
+		return x.Unshallow
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetShallowSince() string {
+	if x != nil {
+		return x.ShallowSince
+	}
+	return ""
+}
+
+func (x *GitPullArguments) GetShallowExclude() []string {
+	if x != nil {
+		return x.ShallowExclude
+	}
+	return nil
+}
+
+func (x *GitPullArguments) GetCommit() OptBool {
+	if x != nil {
+		return x.Commit
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetEdit() OptBool {
+	if x != nil {
+		return x.Edit
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetStat() OptBool {
+	if x != nil {
+		return x.Stat
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetSquash() OptBool {
+	if x != nil {
+		return x.Squash
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetVerifySignatures() OptBool {
+	if x != nil {
+		return x.VerifySignatures
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetSignoff() OptBool {
+	if x != nil {
+		return x.Signoff
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetGpgSign() *GpgSign {
+	if x != nil {
+		return x.GpgSign
+	}
+	return nil
+}
+
+func (x *GitPullArguments) GetAutostash() OptBool {
+	if x != nil {
+		return x.Autostash
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetAllowUnrelatedHistories() OptBool {
+	if x != nil {
+		return x.AllowUnrelatedHistories
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetStrategy() []string {
+	if x != nil {
+		return x.Strategy
+	}
+	return nil
+}
+
+func (x *GitPullArguments) GetStrategyOption() []string {
+	if x != nil {
+		return x.StrategyOption
+	}
+	return nil
+}
+
+func (x *GitPullArguments) GetAll() OptBool {
+	if x != nil {
+		return x.All
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetAppend() OptBool {
+	if x != nil {
+		return x.Append
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetPrune() OptBool {
+	if x != nil {
+		return x.Prune
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetTags() OptBool {
+	if x != nil {
+		return x.Tags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetNoTags() OptBool {
+	if x != nil {
+		return x.NoTags
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetRecurseSubmodules() RecurseSubmodules {
+	if x != nil {
+		return x.RecurseSubmodules
+	}
+	return RecurseSubmodules_RECURSE_SUBMODULES_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetJobs() int32 {
+	if x != nil {
+		return x.Jobs
+	}
+	return 0
+}
+
+func (x *GitPullArguments) GetForce() OptBool {
+	if x != nil {
+		return x.Force
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetKeep() OptBool {
+	if x != nil {
+		return x.Keep
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetIpv4() OptBool {
+	if x != nil {
+		return x.Ipv4
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetIpv6() OptBool {
+	if x != nil {
+		return x.Ipv6
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetQuiet() OptBool {
+	if x != nil {
+		return x.Quiet
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetVerbose() OptBool {
+	if x != nil {
+		return x.Verbose
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetProgress() OptBool {
+	if x != nil {
+		return x.Progress
+	}
+	return OptBool_OPT_BOOL_UNSPECIFIED
+}
+
+func (x *GitPullArguments) GetUploadPack() string {
+	if x != nil {
+		return x.UploadPack
+	}
+	return ""
+}
+
+func (x *GitPullArguments) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *GitPullArguments) GetRefspecs() []string {
+	if x != nil {
+		return x.Refspecs
+	}
+	return nil
+}
+
 var File_subcommand_proto protoreflect.FileDescriptor
 
 const file_subcommand_proto_rawDesc = "" +
 	"\n" +
 	"\x10subcommand.proto\x12\vsubcommands\x1a\vflags.proto\x1a\n" +
-	"repo.proto\"\xf3\x15\n" +
+	"repo.proto\"\xc7\x17\n" +
 	"\n" +
 	"Subcommand\x12\x1e\n" +
 	"\x04repo\x18\x01 \x01(\v2\n" +
@@ -9467,7 +10359,10 @@ const file_subcommand_proto_rawDesc = "" +
 	"\tsubmodule\x18) \x01(\v2\".subcommands.GitSubmoduleArgumentsH\x00R\tsubmodule\x129\n" +
 	"\x06switch\x18* \x01(\v2\x1f.subcommands.GitSwitchArgumentsH\x00R\x06switch\x120\n" +
 	"\x03tag\x18+ \x01(\v2\x1c.subcommands.GitTagArgumentsH\x00R\x03tag\x12?\n" +
-	"\bworktree\x18, \x01(\v2!.subcommands.GitWorktreeArgumentsH\x00R\bworktree\"\xf3\x04\n" +
+	"\bworktree\x18, \x01(\v2!.subcommands.GitWorktreeArgumentsH\x00R\bworktree\x126\n" +
+	"\x05clone\x18- \x01(\v2\x1e.subcommands.GitCloneArgumentsH\x00R\x05clone\x126\n" +
+	"\x05fetch\x18. \x01(\v2\x1e.subcommands.GitFetchArgumentsH\x00R\x05fetch\x123\n" +
+	"\x04pull\x18/ \x01(\v2\x1d.subcommands.GitPullArgumentsH\x00R\x04pull\"\xa2\x05\n" +
 	"\x04Type\x12\x14\n" +
 	"\x10TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bTYPE_ADD\x10\x01\x12\x10\n" +
@@ -9510,7 +10405,12 @@ const file_subcommand_proto_rawDesc = "" +
 	"\x0eTYPE_SUBMODULE\x10 \x12\x0f\n" +
 	"\vTYPE_SWITCH\x10!\x12\f\n" +
 	"\bTYPE_TAG\x10\"\x12\x11\n" +
-	"\rTYPE_WORKTREE\x10#B\x06\n" +
+	"\rTYPE_WORKTREE\x10#\x12\x0e\n" +
+	"\n" +
+	"TYPE_CLONE\x10$\x12\x0e\n" +
+	"\n" +
+	"TYPE_FETCH\x10%\x12\r\n" +
+	"\tTYPE_PULL\x10&B\x06\n" +
 	"\x04args\"\xec\x06\n" +
 	"\x0fGitAddArguments\x12.\n" +
 	"\averbose\x18\x01 \x01(\x0e2\x14.subcommands.OptBoolR\averbose\x12-\n" +
@@ -10462,7 +11362,114 @@ const file_subcommand_proto_rawDesc = "" +
 	"\vVERB_UNLOCK\x10\x06\x12\x0e\n" +
 	"\n" +
 	"VERB_PRUNE\x10\a\x12\x0f\n" +
-	"\vVERB_REPAIR\x10\bB)Z'github.com/accretional/proto-repo/genpbb\x06proto3"
+	"\vVERB_REPAIR\x10\b\"\xe3\a\n" +
+	"\x11GitCloneArguments\x12(\n" +
+	"\x04bare\x18\x01 \x01(\x0e2\x14.subcommands.OptBoolR\x04bare\x12,\n" +
+	"\x06mirror\x18\x02 \x01(\x0e2\x14.subcommands.OptBoolR\x06mirror\x12\x16\n" +
+	"\x06origin\x18\x03 \x01(\tR\x06origin\x12\x16\n" +
+	"\x06branch\x18\x04 \x01(\tR\x06branch\x12\x1f\n" +
+	"\vupload_pack\x18\x05 \x01(\tR\n" +
+	"uploadPack\x12\x1a\n" +
+	"\btemplate\x18\x06 \x01(\tR\btemplate\x12\x1c\n" +
+	"\treference\x18\a \x01(\tR\treference\x124\n" +
+	"\n" +
+	"dissociate\x18\b \x01(\x0e2\x14.subcommands.OptBoolR\n" +
+	"dissociate\x12\x14\n" +
+	"\x05depth\x18\t \x01(\x05R\x05depth\x12#\n" +
+	"\rshallow_since\x18\n" +
+	" \x01(\tR\fshallowSince\x12'\n" +
+	"\x0fshallow_exclude\x18\v \x03(\tR\x0eshallowExclude\x129\n" +
+	"\rsingle_branch\x18\f \x01(\x0e2\x14.subcommands.OptBoolR\fsingleBranch\x12-\n" +
+	"\ano_tags\x18\r \x01(\x0e2\x14.subcommands.OptBoolR\x06noTags\x12M\n" +
+	"\x12recurse_submodules\x18\x0e \x01(\x0e2\x1e.subcommands.RecurseSubmodulesR\x11recurseSubmodules\x12C\n" +
+	"\x12shallow_submodules\x18\x0f \x01(\x0e2\x14.subcommands.OptBoolR\x11shallowSubmodules\x12A\n" +
+	"\x11remote_submodules\x18\x10 \x01(\x0e2\x14.subcommands.OptBoolR\x10remoteSubmodules\x12(\n" +
+	"\x10separate_git_dir\x18\x11 \x01(\tR\x0eseparateGitDir\x12\x12\n" +
+	"\x04jobs\x18\x12 \x01(\x05R\x04jobs\x12\x16\n" +
+	"\x06filter\x18\x13 \x01(\tR\x06filter\x120\n" +
+	"\bprogress\x18\x14 \x01(\x0e2\x14.subcommands.OptBoolR\bprogress\x12*\n" +
+	"\x05quiet\x18\x15 \x01(\x0e2\x14.subcommands.OptBoolR\x05quiet\x12.\n" +
+	"\averbose\x18\x16 \x01(\x0e2\x14.subcommands.OptBoolR\averbose\x12,\n" +
+	"\x06sparse\x18\x17 \x01(\x0e2\x14.subcommands.OptBoolR\x06sparse\"\xaa\v\n" +
+	"\x11GitFetchArguments\x12&\n" +
+	"\x03all\x18\x01 \x01(\x0e2\x14.subcommands.OptBoolR\x03all\x12,\n" +
+	"\x06append\x18\x02 \x01(\x0e2\x14.subcommands.OptBoolR\x06append\x12,\n" +
+	"\x06atomic\x18\x03 \x01(\x0e2\x14.subcommands.OptBoolR\x06atomic\x12\x14\n" +
+	"\x05depth\x18\x04 \x01(\x05R\x05depth\x12\x16\n" +
+	"\x06deepen\x18\x05 \x01(\x05R\x06deepen\x12#\n" +
+	"\rshallow_since\x18\x06 \x01(\tR\fshallowSince\x12'\n" +
+	"\x0fshallow_exclude\x18\a \x03(\tR\x0eshallowExclude\x122\n" +
+	"\tunshallow\x18\b \x01(\x0e2\x14.subcommands.OptBoolR\tunshallow\x12;\n" +
+	"\x0eupdate_shallow\x18\t \x01(\x0e2\x14.subcommands.OptBoolR\rupdateShallow\x12*\n" +
+	"\x05prune\x18\n" +
+	" \x01(\x0e2\x14.subcommands.OptBoolR\x05prune\x123\n" +
+	"\n" +
+	"prune_tags\x18\v \x01(\x0e2\x14.subcommands.OptBoolR\tpruneTags\x12(\n" +
+	"\x04tags\x18\f \x01(\x0e2\x14.subcommands.OptBoolR\x04tags\x12-\n" +
+	"\ano_tags\x18\r \x01(\x0e2\x14.subcommands.OptBoolR\x06noTags\x12.\n" +
+	"\arefetch\x18\x0e \x01(\x0e2\x14.subcommands.OptBoolR\arefetch\x12*\n" +
+	"\x05force\x18\x0f \x01(\x0e2\x14.subcommands.OptBoolR\x05force\x12(\n" +
+	"\x04keep\x18\x10 \x01(\x0e2\x14.subcommands.OptBoolR\x04keep\x120\n" +
+	"\bmultiple\x18\x11 \x01(\x0e2\x14.subcommands.OptBoolR\bmultiple\x12M\n" +
+	"\x12recurse_submodules\x18\x12 \x01(\x0e2\x1e.subcommands.RecurseSubmodulesR\x11recurseSubmodules\x127\n" +
+	"\fset_upstream\x18\x13 \x01(\x0e2\x14.subcommands.OptBoolR\vsetUpstream\x12\x12\n" +
+	"\x04jobs\x18\x14 \x01(\x05R\x04jobs\x12-\n" +
+	"\adry_run\x18\x15 \x01(\x0e2\x14.subcommands.OptBoolR\x06dryRun\x12>\n" +
+	"\x10write_fetch_head\x18\x16 \x01(\x0e2\x14.subcommands.OptBoolR\x0ewriteFetchHead\x12C\n" +
+	"\x13no_write_fetch_head\x18\x17 \x01(\x0e2\x14.subcommands.OptBoolR\x10noWriteFetchHead\x12*\n" +
+	"\x05quiet\x18\x18 \x01(\x0e2\x14.subcommands.OptBoolR\x05quiet\x12.\n" +
+	"\averbose\x18\x19 \x01(\x0e2\x14.subcommands.OptBoolR\averbose\x120\n" +
+	"\bprogress\x18\x1a \x01(\x0e2\x14.subcommands.OptBoolR\bprogress\x12(\n" +
+	"\x04ipv4\x18\x1b \x01(\x0e2\x14.subcommands.OptBoolR\x04ipv4\x12(\n" +
+	"\x04ipv6\x18\x1c \x01(\x0e2\x14.subcommands.OptBoolR\x04ipv6\x12\x1f\n" +
+	"\vupload_pack\x18\x1d \x01(\tR\n" +
+	"uploadPack\x12#\n" +
+	"\rserver_option\x18\x1e \x01(\tR\fserverOption\x12\x1e\n" +
+	"\n" +
+	"repository\x18\x1f \x01(\tR\n" +
+	"repository\x12\x1a\n" +
+	"\brefspecs\x18  \x03(\tR\brefspecs\"\xad\f\n" +
+	"\x10GitPullArguments\x12;\n" +
+	"\ffast_forward\x18\x01 \x01(\x0e2\x18.subcommands.FastForwardR\vfastForward\x12\x1f\n" +
+	"\vrebase_mode\x18\x02 \x01(\tR\n" +
+	"rebaseMode\x121\n" +
+	"\tno_rebase\x18\x03 \x01(\x0e2\x14.subcommands.OptBoolR\bnoRebase\x12\x14\n" +
+	"\x05depth\x18\x04 \x01(\x05R\x05depth\x122\n" +
+	"\tunshallow\x18\x05 \x01(\x0e2\x14.subcommands.OptBoolR\tunshallow\x12#\n" +
+	"\rshallow_since\x18\x06 \x01(\tR\fshallowSince\x12'\n" +
+	"\x0fshallow_exclude\x18\a \x03(\tR\x0eshallowExclude\x12,\n" +
+	"\x06commit\x18\b \x01(\x0e2\x14.subcommands.OptBoolR\x06commit\x12(\n" +
+	"\x04edit\x18\t \x01(\x0e2\x14.subcommands.OptBoolR\x04edit\x12(\n" +
+	"\x04stat\x18\n" +
+	" \x01(\x0e2\x14.subcommands.OptBoolR\x04stat\x12,\n" +
+	"\x06squash\x18\v \x01(\x0e2\x14.subcommands.OptBoolR\x06squash\x12A\n" +
+	"\x11verify_signatures\x18\f \x01(\x0e2\x14.subcommands.OptBoolR\x10verifySignatures\x12.\n" +
+	"\asignoff\x18\r \x01(\x0e2\x14.subcommands.OptBoolR\asignoff\x12/\n" +
+	"\bgpg_sign\x18\x0e \x01(\v2\x14.subcommands.GpgSignR\agpgSign\x122\n" +
+	"\tautostash\x18\x0f \x01(\x0e2\x14.subcommands.OptBoolR\tautostash\x12P\n" +
+	"\x19allow_unrelated_histories\x18\x10 \x01(\x0e2\x14.subcommands.OptBoolR\x17allowUnrelatedHistories\x12\x1a\n" +
+	"\bstrategy\x18\x11 \x03(\tR\bstrategy\x12'\n" +
+	"\x0fstrategy_option\x18\x12 \x03(\tR\x0estrategyOption\x12&\n" +
+	"\x03all\x18\x13 \x01(\x0e2\x14.subcommands.OptBoolR\x03all\x12,\n" +
+	"\x06append\x18\x14 \x01(\x0e2\x14.subcommands.OptBoolR\x06append\x12*\n" +
+	"\x05prune\x18\x15 \x01(\x0e2\x14.subcommands.OptBoolR\x05prune\x12(\n" +
+	"\x04tags\x18\x16 \x01(\x0e2\x14.subcommands.OptBoolR\x04tags\x12-\n" +
+	"\ano_tags\x18\x17 \x01(\x0e2\x14.subcommands.OptBoolR\x06noTags\x12M\n" +
+	"\x12recurse_submodules\x18\x18 \x01(\x0e2\x1e.subcommands.RecurseSubmodulesR\x11recurseSubmodules\x12\x12\n" +
+	"\x04jobs\x18\x19 \x01(\x05R\x04jobs\x12*\n" +
+	"\x05force\x18\x1a \x01(\x0e2\x14.subcommands.OptBoolR\x05force\x12(\n" +
+	"\x04keep\x18\x1b \x01(\x0e2\x14.subcommands.OptBoolR\x04keep\x12(\n" +
+	"\x04ipv4\x18\x1c \x01(\x0e2\x14.subcommands.OptBoolR\x04ipv4\x12(\n" +
+	"\x04ipv6\x18\x1d \x01(\x0e2\x14.subcommands.OptBoolR\x04ipv6\x12*\n" +
+	"\x05quiet\x18\x1e \x01(\x0e2\x14.subcommands.OptBoolR\x05quiet\x12.\n" +
+	"\averbose\x18\x1f \x01(\x0e2\x14.subcommands.OptBoolR\averbose\x120\n" +
+	"\bprogress\x18  \x01(\x0e2\x14.subcommands.OptBoolR\bprogress\x12\x1f\n" +
+	"\vupload_pack\x18! \x01(\tR\n" +
+	"uploadPack\x12\x1e\n" +
+	"\n" +
+	"repository\x18\" \x01(\tR\n" +
+	"repository\x12\x1a\n" +
+	"\brefspecs\x18# \x03(\tR\brefspecsB)Z'github.com/accretional/proto-repo/genpbb\x06proto3"
 
 var (
 	file_subcommand_proto_rawDescOnce sync.Once
@@ -10477,7 +11484,7 @@ func file_subcommand_proto_rawDescGZIP() []byte {
 }
 
 var file_subcommand_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
-var file_subcommand_proto_msgTypes = make([]protoimpl.MessageInfo, 61)
+var file_subcommand_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
 var file_subcommand_proto_goTypes = []any{
 	(Subcommand_Type)(0),                 // 0: subcommands.Subcommand.Type
 	(GitBranchArguments_Action)(0),       // 1: subcommands.GitBranchArguments.Action
@@ -10553,26 +11560,29 @@ var file_subcommand_proto_goTypes = []any{
 	(*GitSwitchArguments)(nil),           // 71: subcommands.GitSwitchArguments
 	(*GitTagArguments)(nil),              // 72: subcommands.GitTagArguments
 	(*GitWorktreeArguments)(nil),         // 73: subcommands.GitWorktreeArguments
-	(*Repo)(nil),                         // 74: repo.Repo
-	(OptBool)(0),                         // 75: subcommands.OptBool
-	(ChmodExecutable)(0),                 // 76: subcommands.ChmodExecutable
-	(*Pathspec)(nil),                     // 77: subcommands.Pathspec
-	(BranchTrackMode)(0),                 // 78: subcommands.BranchTrackMode
-	(ColorWhen)(0),                       // 79: subcommands.ColorWhen
-	(RecurseSubmodules)(0),               // 80: subcommands.RecurseSubmodules
-	(*GpgSign)(nil),                      // 81: subcommands.GpgSign
-	(*IdentityOverride)(nil),             // 82: subcommands.IdentityOverride
-	(*MessageSource)(nil),                // 83: subcommands.MessageSource
-	(UntrackedFilesMode)(0),              // 84: subcommands.UntrackedFilesMode
-	(StatusFormat)(0),                    // 85: subcommands.StatusFormat
-	(*DiffFormatting)(nil),               // 86: subcommands.DiffFormatting
-	(*OptInt)(nil),                       // 87: subcommands.OptInt
-	(Decorate)(0),                        // 88: subcommands.Decorate
-	(FastForward)(0),                     // 89: subcommands.FastForward
-	(IgnoredMode)(0),                     // 90: subcommands.IgnoredMode
+	(*GitCloneArguments)(nil),            // 74: subcommands.GitCloneArguments
+	(*GitFetchArguments)(nil),            // 75: subcommands.GitFetchArguments
+	(*GitPullArguments)(nil),             // 76: subcommands.GitPullArguments
+	(*Repo)(nil),                         // 77: repo.Repo
+	(OptBool)(0),                         // 78: subcommands.OptBool
+	(ChmodExecutable)(0),                 // 79: subcommands.ChmodExecutable
+	(*Pathspec)(nil),                     // 80: subcommands.Pathspec
+	(BranchTrackMode)(0),                 // 81: subcommands.BranchTrackMode
+	(ColorWhen)(0),                       // 82: subcommands.ColorWhen
+	(RecurseSubmodules)(0),               // 83: subcommands.RecurseSubmodules
+	(*GpgSign)(nil),                      // 84: subcommands.GpgSign
+	(*IdentityOverride)(nil),             // 85: subcommands.IdentityOverride
+	(*MessageSource)(nil),                // 86: subcommands.MessageSource
+	(UntrackedFilesMode)(0),              // 87: subcommands.UntrackedFilesMode
+	(StatusFormat)(0),                    // 88: subcommands.StatusFormat
+	(*DiffFormatting)(nil),               // 89: subcommands.DiffFormatting
+	(*OptInt)(nil),                       // 90: subcommands.OptInt
+	(Decorate)(0),                        // 91: subcommands.Decorate
+	(FastForward)(0),                     // 92: subcommands.FastForward
+	(IgnoredMode)(0),                     // 93: subcommands.IgnoredMode
 }
 var file_subcommand_proto_depIdxs = []int32{
-	74,  // 0: subcommands.Subcommand.repo:type_name -> repo.Repo
+	77,  // 0: subcommands.Subcommand.repo:type_name -> repo.Repo
 	0,   // 1: subcommands.Subcommand.type:type_name -> subcommands.Subcommand.Type
 	14,  // 2: subcommands.Subcommand.add:type_name -> subcommands.GitAddArguments
 	15,  // 3: subcommands.Subcommand.archive:type_name -> subcommands.GitArchiveArguments
@@ -10609,472 +11619,535 @@ var file_subcommand_proto_depIdxs = []int32{
 	71,  // 34: subcommands.Subcommand.switch:type_name -> subcommands.GitSwitchArguments
 	72,  // 35: subcommands.Subcommand.tag:type_name -> subcommands.GitTagArguments
 	73,  // 36: subcommands.Subcommand.worktree:type_name -> subcommands.GitWorktreeArguments
-	75,  // 37: subcommands.GitAddArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 38: subcommands.GitAddArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 39: subcommands.GitAddArguments.force:type_name -> subcommands.OptBool
-	75,  // 40: subcommands.GitAddArguments.interactive:type_name -> subcommands.OptBool
-	75,  // 41: subcommands.GitAddArguments.patch:type_name -> subcommands.OptBool
-	75,  // 42: subcommands.GitAddArguments.edit:type_name -> subcommands.OptBool
-	75,  // 43: subcommands.GitAddArguments.all:type_name -> subcommands.OptBool
-	75,  // 44: subcommands.GitAddArguments.ignore_removal:type_name -> subcommands.OptBool
-	75,  // 45: subcommands.GitAddArguments.update:type_name -> subcommands.OptBool
-	75,  // 46: subcommands.GitAddArguments.sparse:type_name -> subcommands.OptBool
-	75,  // 47: subcommands.GitAddArguments.intent_to_add:type_name -> subcommands.OptBool
-	75,  // 48: subcommands.GitAddArguments.refresh:type_name -> subcommands.OptBool
-	75,  // 49: subcommands.GitAddArguments.ignore_errors:type_name -> subcommands.OptBool
-	75,  // 50: subcommands.GitAddArguments.ignore_missing:type_name -> subcommands.OptBool
-	75,  // 51: subcommands.GitAddArguments.renormalize:type_name -> subcommands.OptBool
-	76,  // 52: subcommands.GitAddArguments.chmod:type_name -> subcommands.ChmodExecutable
-	77,  // 53: subcommands.GitAddArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 54: subcommands.GitArchiveArguments.list:type_name -> subcommands.OptBool
-	75,  // 55: subcommands.GitArchiveArguments.worktree_attributes:type_name -> subcommands.OptBool
-	75,  // 56: subcommands.GitArchiveArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 57: subcommands.GitBackfillArguments.sparse:type_name -> subcommands.OptBool
-	18,  // 58: subcommands.GitBisectArguments.start:type_name -> subcommands.BisectStart
-	19,  // 59: subcommands.GitBisectArguments.bad:type_name -> subcommands.BisectMark
-	19,  // 60: subcommands.GitBisectArguments.good:type_name -> subcommands.BisectMark
-	20,  // 61: subcommands.GitBisectArguments.skip:type_name -> subcommands.BisectSkip
-	21,  // 62: subcommands.GitBisectArguments.terms:type_name -> subcommands.BisectTerms
-	22,  // 63: subcommands.GitBisectArguments.reset:type_name -> subcommands.BisectReset
-	23,  // 64: subcommands.GitBisectArguments.replay:type_name -> subcommands.BisectReplay
-	24,  // 65: subcommands.GitBisectArguments.run:type_name -> subcommands.BisectRun
-	25,  // 66: subcommands.GitBisectArguments.log:type_name -> subcommands.BisectLog
-	26,  // 67: subcommands.GitBisectArguments.next:type_name -> subcommands.BisectNext
-	27,  // 68: subcommands.GitBisectArguments.visualize:type_name -> subcommands.BisectVisualize
-	28,  // 69: subcommands.GitBisectArguments.help:type_name -> subcommands.BisectHelp
-	75,  // 70: subcommands.BisectStart.no_checkout:type_name -> subcommands.OptBool
-	75,  // 71: subcommands.BisectStart.first_parent:type_name -> subcommands.OptBool
-	77,  // 72: subcommands.BisectStart.pathspec:type_name -> subcommands.Pathspec
-	75,  // 73: subcommands.BisectTerms.term_good:type_name -> subcommands.OptBool
-	75,  // 74: subcommands.BisectTerms.term_bad:type_name -> subcommands.OptBool
-	1,   // 75: subcommands.GitBranchArguments.action:type_name -> subcommands.GitBranchArguments.Action
-	75,  // 76: subcommands.GitBranchArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 77: subcommands.GitBranchArguments.quiet:type_name -> subcommands.OptBool
-	78,  // 78: subcommands.GitBranchArguments.track:type_name -> subcommands.BranchTrackMode
-	75,  // 79: subcommands.GitBranchArguments.unset_upstream:type_name -> subcommands.OptBool
-	79,  // 80: subcommands.GitBranchArguments.color:type_name -> subcommands.ColorWhen
-	75,  // 81: subcommands.GitBranchArguments.no_color:type_name -> subcommands.OptBool
-	75,  // 82: subcommands.GitBranchArguments.remotes:type_name -> subcommands.OptBool
-	75,  // 83: subcommands.GitBranchArguments.all:type_name -> subcommands.OptBool
-	75,  // 84: subcommands.GitBranchArguments.no_abbrev:type_name -> subcommands.OptBool
-	75,  // 85: subcommands.GitBranchArguments.ignore_case:type_name -> subcommands.OptBool
-	80,  // 86: subcommands.GitBranchArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	75,  // 87: subcommands.GitBranchArguments.force:type_name -> subcommands.OptBool
-	75,  // 88: subcommands.GitBranchArguments.create_reflog:type_name -> subcommands.OptBool
-	31,  // 89: subcommands.GitBundleArguments.create:type_name -> subcommands.BundleCreate
-	32,  // 90: subcommands.GitBundleArguments.verify:type_name -> subcommands.BundleVerify
-	33,  // 91: subcommands.GitBundleArguments.list_heads:type_name -> subcommands.BundleListHeads
-	34,  // 92: subcommands.GitBundleArguments.unbundle:type_name -> subcommands.BundleUnbundle
-	75,  // 93: subcommands.BundleCreate.quiet:type_name -> subcommands.OptBool
-	75,  // 94: subcommands.BundleCreate.progress:type_name -> subcommands.OptBool
-	75,  // 95: subcommands.BundleCreate.all_progress:type_name -> subcommands.OptBool
-	75,  // 96: subcommands.BundleCreate.all_progress_implied:type_name -> subcommands.OptBool
-	75,  // 97: subcommands.BundleVerify.quiet:type_name -> subcommands.OptBool
-	75,  // 98: subcommands.BundleUnbundle.progress:type_name -> subcommands.OptBool
-	75,  // 99: subcommands.GitCheckoutArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 100: subcommands.GitCheckoutArguments.progress:type_name -> subcommands.OptBool
-	75,  // 101: subcommands.GitCheckoutArguments.force:type_name -> subcommands.OptBool
-	75,  // 102: subcommands.GitCheckoutArguments.ours:type_name -> subcommands.OptBool
-	75,  // 103: subcommands.GitCheckoutArguments.theirs:type_name -> subcommands.OptBool
-	78,  // 104: subcommands.GitCheckoutArguments.track:type_name -> subcommands.BranchTrackMode
-	75,  // 105: subcommands.GitCheckoutArguments.guess:type_name -> subcommands.OptBool
-	75,  // 106: subcommands.GitCheckoutArguments.detach:type_name -> subcommands.OptBool
-	75,  // 107: subcommands.GitCheckoutArguments.ignore_skip_worktree_bits:type_name -> subcommands.OptBool
-	75,  // 108: subcommands.GitCheckoutArguments.merge:type_name -> subcommands.OptBool
-	75,  // 109: subcommands.GitCheckoutArguments.patch:type_name -> subcommands.OptBool
-	80,  // 110: subcommands.GitCheckoutArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	75,  // 111: subcommands.GitCheckoutArguments.overlay:type_name -> subcommands.OptBool
-	75,  // 112: subcommands.GitCheckoutArguments.pathspec_file_nul:type_name -> subcommands.OptBool
-	77,  // 113: subcommands.GitCheckoutArguments.pathspec:type_name -> subcommands.Pathspec
-	2,   // 114: subcommands.GitCherryPickArguments.control:type_name -> subcommands.GitCherryPickArguments.Control
-	75,  // 115: subcommands.GitCherryPickArguments.edit:type_name -> subcommands.OptBool
-	75,  // 116: subcommands.GitCherryPickArguments.no_commit:type_name -> subcommands.OptBool
-	75,  // 117: subcommands.GitCherryPickArguments.signoff:type_name -> subcommands.OptBool
-	81,  // 118: subcommands.GitCherryPickArguments.gpg_sign:type_name -> subcommands.GpgSign
-	75,  // 119: subcommands.GitCherryPickArguments.fast_forward:type_name -> subcommands.OptBool
-	75,  // 120: subcommands.GitCherryPickArguments.allow_empty:type_name -> subcommands.OptBool
-	75,  // 121: subcommands.GitCherryPickArguments.allow_empty_message:type_name -> subcommands.OptBool
-	75,  // 122: subcommands.GitCherryPickArguments.keep_redundant_commits:type_name -> subcommands.OptBool
-	75,  // 123: subcommands.GitCherryPickArguments.reference:type_name -> subcommands.OptBool
-	75,  // 124: subcommands.GitCherryPickArguments.x:type_name -> subcommands.OptBool
-	75,  // 125: subcommands.GitCleanArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 126: subcommands.GitCleanArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 127: subcommands.GitCleanArguments.force:type_name -> subcommands.OptBool
-	75,  // 128: subcommands.GitCleanArguments.interactive:type_name -> subcommands.OptBool
-	75,  // 129: subcommands.GitCleanArguments.directories:type_name -> subcommands.OptBool
-	75,  // 130: subcommands.GitCleanArguments.include_ignored:type_name -> subcommands.OptBool
-	75,  // 131: subcommands.GitCleanArguments.only_ignored:type_name -> subcommands.OptBool
-	77,  // 132: subcommands.GitCleanArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 133: subcommands.GitCommitArguments.all:type_name -> subcommands.OptBool
-	75,  // 134: subcommands.GitCommitArguments.patch:type_name -> subcommands.OptBool
-	75,  // 135: subcommands.GitCommitArguments.reset_author:type_name -> subcommands.OptBool
-	82,  // 136: subcommands.GitCommitArguments.identity:type_name -> subcommands.IdentityOverride
-	83,  // 137: subcommands.GitCommitArguments.message:type_name -> subcommands.MessageSource
-	75,  // 138: subcommands.GitCommitArguments.allow_empty:type_name -> subcommands.OptBool
-	75,  // 139: subcommands.GitCommitArguments.allow_empty_message:type_name -> subcommands.OptBool
-	75,  // 140: subcommands.GitCommitArguments.no_verify:type_name -> subcommands.OptBool
-	75,  // 141: subcommands.GitCommitArguments.edit:type_name -> subcommands.OptBool
-	75,  // 142: subcommands.GitCommitArguments.amend:type_name -> subcommands.OptBool
-	75,  // 143: subcommands.GitCommitArguments.no_post_rewrite:type_name -> subcommands.OptBool
-	75,  // 144: subcommands.GitCommitArguments.signoff:type_name -> subcommands.OptBool
-	81,  // 145: subcommands.GitCommitArguments.gpg_sign:type_name -> subcommands.GpgSign
-	84,  // 146: subcommands.GitCommitArguments.untracked_files:type_name -> subcommands.UntrackedFilesMode
-	75,  // 147: subcommands.GitCommitArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 148: subcommands.GitCommitArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 149: subcommands.GitCommitArguments.dry_run:type_name -> subcommands.OptBool
-	85,  // 150: subcommands.GitCommitArguments.status_format:type_name -> subcommands.StatusFormat
-	75,  // 151: subcommands.GitCommitArguments.include_status:type_name -> subcommands.OptBool
-	75,  // 152: subcommands.GitCommitArguments.branch:type_name -> subcommands.OptBool
-	75,  // 153: subcommands.GitCommitArguments.ahead_behind:type_name -> subcommands.OptBool
-	75,  // 154: subcommands.GitCommitArguments.z:type_name -> subcommands.OptBool
-	75,  // 155: subcommands.GitCommitArguments.include:type_name -> subcommands.OptBool
-	75,  // 156: subcommands.GitCommitArguments.only:type_name -> subcommands.OptBool
-	77,  // 157: subcommands.GitCommitArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 158: subcommands.GitDescribeArguments.all:type_name -> subcommands.OptBool
-	75,  // 159: subcommands.GitDescribeArguments.tags:type_name -> subcommands.OptBool
-	75,  // 160: subcommands.GitDescribeArguments.contains:type_name -> subcommands.OptBool
-	75,  // 161: subcommands.GitDescribeArguments.dirty:type_name -> subcommands.OptBool
-	75,  // 162: subcommands.GitDescribeArguments.broken:type_name -> subcommands.OptBool
-	75,  // 163: subcommands.GitDescribeArguments.exact_match:type_name -> subcommands.OptBool
-	75,  // 164: subcommands.GitDescribeArguments.debug:type_name -> subcommands.OptBool
-	75,  // 165: subcommands.GitDescribeArguments.long:type_name -> subcommands.OptBool
-	75,  // 166: subcommands.GitDescribeArguments.always:type_name -> subcommands.OptBool
-	75,  // 167: subcommands.GitDescribeArguments.first_parent:type_name -> subcommands.OptBool
-	86,  // 168: subcommands.GitDiffArguments.formatting:type_name -> subcommands.DiffFormatting
-	75,  // 169: subcommands.GitDiffArguments.cached:type_name -> subcommands.OptBool
-	75,  // 170: subcommands.GitDiffArguments.staged:type_name -> subcommands.OptBool
-	75,  // 171: subcommands.GitDiffArguments.merge_base:type_name -> subcommands.OptBool
-	75,  // 172: subcommands.GitDiffArguments.no_index:type_name -> subcommands.OptBool
-	75,  // 173: subcommands.GitDiffArguments.index:type_name -> subcommands.OptBool
-	75,  // 174: subcommands.GitDiffArguments.base:type_name -> subcommands.OptBool
-	75,  // 175: subcommands.GitDiffArguments.ours:type_name -> subcommands.OptBool
-	75,  // 176: subcommands.GitDiffArguments.theirs:type_name -> subcommands.OptBool
-	75,  // 177: subcommands.GitDiffArguments.combined_diff:type_name -> subcommands.OptBool
-	77,  // 178: subcommands.GitDiffArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 179: subcommands.GitGcArguments.aggressive:type_name -> subcommands.OptBool
-	75,  // 180: subcommands.GitGcArguments.auto:type_name -> subcommands.OptBool
-	75,  // 181: subcommands.GitGcArguments.no_prune:type_name -> subcommands.OptBool
-	75,  // 182: subcommands.GitGcArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 183: subcommands.GitGcArguments.force:type_name -> subcommands.OptBool
-	75,  // 184: subcommands.GitGcArguments.keep_largest_pack:type_name -> subcommands.OptBool
-	75,  // 185: subcommands.GitGcArguments.cruft:type_name -> subcommands.OptBool
-	75,  // 186: subcommands.GitInitArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 187: subcommands.GitInitArguments.bare:type_name -> subcommands.OptBool
-	75,  // 188: subcommands.GitInitArguments.shared_flag:type_name -> subcommands.OptBool
-	86,  // 189: subcommands.GitLogArguments.formatting:type_name -> subcommands.DiffFormatting
-	87,  // 190: subcommands.GitLogArguments.max_count:type_name -> subcommands.OptInt
-	87,  // 191: subcommands.GitLogArguments.skip:type_name -> subcommands.OptInt
-	75,  // 192: subcommands.GitLogArguments.all_match:type_name -> subcommands.OptBool
-	75,  // 193: subcommands.GitLogArguments.invert_grep:type_name -> subcommands.OptBool
-	75,  // 194: subcommands.GitLogArguments.regexp_ignore_case:type_name -> subcommands.OptBool
-	75,  // 195: subcommands.GitLogArguments.basic_regexp:type_name -> subcommands.OptBool
-	75,  // 196: subcommands.GitLogArguments.extended_regexp:type_name -> subcommands.OptBool
-	75,  // 197: subcommands.GitLogArguments.fixed_strings:type_name -> subcommands.OptBool
-	75,  // 198: subcommands.GitLogArguments.perl_regexp:type_name -> subcommands.OptBool
-	75,  // 199: subcommands.GitLogArguments.remove_empty:type_name -> subcommands.OptBool
-	75,  // 200: subcommands.GitLogArguments.merges:type_name -> subcommands.OptBool
-	75,  // 201: subcommands.GitLogArguments.no_merges:type_name -> subcommands.OptBool
-	87,  // 202: subcommands.GitLogArguments.min_parents:type_name -> subcommands.OptInt
-	87,  // 203: subcommands.GitLogArguments.max_parents:type_name -> subcommands.OptInt
-	75,  // 204: subcommands.GitLogArguments.no_min_parents:type_name -> subcommands.OptBool
-	75,  // 205: subcommands.GitLogArguments.no_max_parents:type_name -> subcommands.OptBool
-	75,  // 206: subcommands.GitLogArguments.first_parent:type_name -> subcommands.OptBool
-	75,  // 207: subcommands.GitLogArguments.exclude_first_parent_only:type_name -> subcommands.OptBool
-	75,  // 208: subcommands.GitLogArguments.not:type_name -> subcommands.OptBool
-	75,  // 209: subcommands.GitLogArguments.all:type_name -> subcommands.OptBool
-	75,  // 210: subcommands.GitLogArguments.branches:type_name -> subcommands.OptBool
-	75,  // 211: subcommands.GitLogArguments.tags:type_name -> subcommands.OptBool
-	75,  // 212: subcommands.GitLogArguments.remotes:type_name -> subcommands.OptBool
-	75,  // 213: subcommands.GitLogArguments.reflog:type_name -> subcommands.OptBool
-	75,  // 214: subcommands.GitLogArguments.alternate_refs:type_name -> subcommands.OptBool
-	75,  // 215: subcommands.GitLogArguments.single_worktree:type_name -> subcommands.OptBool
-	75,  // 216: subcommands.GitLogArguments.ignore_missing:type_name -> subcommands.OptBool
-	75,  // 217: subcommands.GitLogArguments.bisect:type_name -> subcommands.OptBool
-	75,  // 218: subcommands.GitLogArguments.stdin:type_name -> subcommands.OptBool
-	75,  // 219: subcommands.GitLogArguments.cherry_mark:type_name -> subcommands.OptBool
-	75,  // 220: subcommands.GitLogArguments.cherry_pick:type_name -> subcommands.OptBool
-	75,  // 221: subcommands.GitLogArguments.left_only:type_name -> subcommands.OptBool
-	75,  // 222: subcommands.GitLogArguments.right_only:type_name -> subcommands.OptBool
-	75,  // 223: subcommands.GitLogArguments.cherry:type_name -> subcommands.OptBool
-	75,  // 224: subcommands.GitLogArguments.walk_reflogs:type_name -> subcommands.OptBool
-	75,  // 225: subcommands.GitLogArguments.merge:type_name -> subcommands.OptBool
-	75,  // 226: subcommands.GitLogArguments.boundary:type_name -> subcommands.OptBool
-	75,  // 227: subcommands.GitLogArguments.simplify_by_decoration:type_name -> subcommands.OptBool
-	75,  // 228: subcommands.GitLogArguments.show_pulls:type_name -> subcommands.OptBool
-	75,  // 229: subcommands.GitLogArguments.full_history:type_name -> subcommands.OptBool
-	75,  // 230: subcommands.GitLogArguments.dense:type_name -> subcommands.OptBool
-	75,  // 231: subcommands.GitLogArguments.sparse:type_name -> subcommands.OptBool
-	75,  // 232: subcommands.GitLogArguments.simplify_merges:type_name -> subcommands.OptBool
-	75,  // 233: subcommands.GitLogArguments.ancestry_path:type_name -> subcommands.OptBool
-	75,  // 234: subcommands.GitLogArguments.date_order:type_name -> subcommands.OptBool
-	75,  // 235: subcommands.GitLogArguments.author_date_order:type_name -> subcommands.OptBool
-	75,  // 236: subcommands.GitLogArguments.topo_order:type_name -> subcommands.OptBool
-	75,  // 237: subcommands.GitLogArguments.reverse:type_name -> subcommands.OptBool
-	75,  // 238: subcommands.GitLogArguments.no_walk:type_name -> subcommands.OptBool
-	75,  // 239: subcommands.GitLogArguments.do_walk:type_name -> subcommands.OptBool
-	75,  // 240: subcommands.GitLogArguments.pretty_flag:type_name -> subcommands.OptBool
-	75,  // 241: subcommands.GitLogArguments.abbrev_commit:type_name -> subcommands.OptBool
-	75,  // 242: subcommands.GitLogArguments.no_abbrev_commit:type_name -> subcommands.OptBool
-	75,  // 243: subcommands.GitLogArguments.oneline:type_name -> subcommands.OptBool
-	75,  // 244: subcommands.GitLogArguments.expand_tabs:type_name -> subcommands.OptBool
-	87,  // 245: subcommands.GitLogArguments.expand_tabs_width:type_name -> subcommands.OptInt
-	75,  // 246: subcommands.GitLogArguments.no_expand_tabs:type_name -> subcommands.OptBool
-	75,  // 247: subcommands.GitLogArguments.notes:type_name -> subcommands.OptBool
-	75,  // 248: subcommands.GitLogArguments.no_notes:type_name -> subcommands.OptBool
-	75,  // 249: subcommands.GitLogArguments.show_notes:type_name -> subcommands.OptBool
-	75,  // 250: subcommands.GitLogArguments.standard_notes:type_name -> subcommands.OptBool
-	75,  // 251: subcommands.GitLogArguments.show_signature:type_name -> subcommands.OptBool
-	75,  // 252: subcommands.GitLogArguments.relative_date:type_name -> subcommands.OptBool
-	75,  // 253: subcommands.GitLogArguments.parents:type_name -> subcommands.OptBool
-	75,  // 254: subcommands.GitLogArguments.children:type_name -> subcommands.OptBool
-	75,  // 255: subcommands.GitLogArguments.left_right:type_name -> subcommands.OptBool
-	75,  // 256: subcommands.GitLogArguments.graph:type_name -> subcommands.OptBool
-	75,  // 257: subcommands.GitLogArguments.show_linear_break:type_name -> subcommands.OptBool
-	75,  // 258: subcommands.GitLogArguments.follow:type_name -> subcommands.OptBool
-	75,  // 259: subcommands.GitLogArguments.no_decorate:type_name -> subcommands.OptBool
-	88,  // 260: subcommands.GitLogArguments.decorate:type_name -> subcommands.Decorate
-	75,  // 261: subcommands.GitLogArguments.decorate_flag:type_name -> subcommands.OptBool
-	75,  // 262: subcommands.GitLogArguments.clear_decorations:type_name -> subcommands.OptBool
-	75,  // 263: subcommands.GitLogArguments.source:type_name -> subcommands.OptBool
-	75,  // 264: subcommands.GitLogArguments.mailmap:type_name -> subcommands.OptBool
-	75,  // 265: subcommands.GitLogArguments.use_mailmap:type_name -> subcommands.OptBool
-	75,  // 266: subcommands.GitLogArguments.full_diff:type_name -> subcommands.OptBool
-	75,  // 267: subcommands.GitLogArguments.log_size:type_name -> subcommands.OptBool
-	75,  // 268: subcommands.GitLogArguments.no_diff_merges:type_name -> subcommands.OptBool
-	75,  // 269: subcommands.GitLogArguments.combined_all_paths:type_name -> subcommands.OptBool
-	75,  // 270: subcommands.GitLogArguments.dash_t:type_name -> subcommands.OptBool
-	75,  // 271: subcommands.GitLogArguments.dash_m:type_name -> subcommands.OptBool
-	75,  // 272: subcommands.GitLogArguments.dash_c:type_name -> subcommands.OptBool
-	75,  // 273: subcommands.GitLogArguments.dash_cc:type_name -> subcommands.OptBool
-	75,  // 274: subcommands.GitLogArguments.remerge_diff:type_name -> subcommands.OptBool
-	77,  // 275: subcommands.GitLogArguments.pathspec:type_name -> subcommands.Pathspec
-	3,   // 276: subcommands.GitMaintenanceArguments.verb:type_name -> subcommands.GitMaintenanceArguments.Verb
-	75,  // 277: subcommands.GitMaintenanceArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 278: subcommands.GitMaintenanceArguments.auto:type_name -> subcommands.OptBool
-	75,  // 279: subcommands.GitMaintenanceArguments.force:type_name -> subcommands.OptBool
-	4,   // 280: subcommands.GitMergeArguments.control:type_name -> subcommands.GitMergeArguments.Control
-	89,  // 281: subcommands.GitMergeArguments.fast_forward:type_name -> subcommands.FastForward
-	75,  // 282: subcommands.GitMergeArguments.squash:type_name -> subcommands.OptBool
-	75,  // 283: subcommands.GitMergeArguments.commit:type_name -> subcommands.OptBool
-	75,  // 284: subcommands.GitMergeArguments.edit:type_name -> subcommands.OptBool
-	75,  // 285: subcommands.GitMergeArguments.verify_signatures:type_name -> subcommands.OptBool
-	75,  // 286: subcommands.GitMergeArguments.signoff:type_name -> subcommands.OptBool
-	75,  // 287: subcommands.GitMergeArguments.stat:type_name -> subcommands.OptBool
-	75,  // 288: subcommands.GitMergeArguments.progress:type_name -> subcommands.OptBool
-	81,  // 289: subcommands.GitMergeArguments.gpg_sign:type_name -> subcommands.GpgSign
-	75,  // 290: subcommands.GitMergeArguments.autostash:type_name -> subcommands.OptBool
-	75,  // 291: subcommands.GitMergeArguments.allow_unrelated_histories:type_name -> subcommands.OptBool
-	75,  // 292: subcommands.GitMergeArguments.rerere_autoupdate:type_name -> subcommands.OptBool
-	75,  // 293: subcommands.GitMergeArguments.overwrite_ignore:type_name -> subcommands.OptBool
-	83,  // 294: subcommands.GitMergeArguments.message:type_name -> subcommands.MessageSource
-	75,  // 295: subcommands.GitMergeArguments.log_flag:type_name -> subcommands.OptBool
-	75,  // 296: subcommands.GitMergeArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 297: subcommands.GitMergeArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 298: subcommands.GitMvArguments.force:type_name -> subcommands.OptBool
-	75,  // 299: subcommands.GitMvArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 300: subcommands.GitMvArguments.skip_errors:type_name -> subcommands.OptBool
-	75,  // 301: subcommands.GitMvArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 302: subcommands.GitMvArguments.sparse:type_name -> subcommands.OptBool
-	5,   // 303: subcommands.GitNotesArguments.verb:type_name -> subcommands.GitNotesArguments.Verb
-	75,  // 304: subcommands.GitNotesArguments.force:type_name -> subcommands.OptBool
-	83,  // 305: subcommands.GitNotesArguments.message:type_name -> subcommands.MessageSource
-	75,  // 306: subcommands.GitNotesArguments.allow_empty:type_name -> subcommands.OptBool
-	75,  // 307: subcommands.GitNotesArguments.stripspace:type_name -> subcommands.OptBool
-	75,  // 308: subcommands.GitNotesArguments.ignore_missing:type_name -> subcommands.OptBool
-	75,  // 309: subcommands.GitPushArguments.all:type_name -> subcommands.OptBool
-	75,  // 310: subcommands.GitPushArguments.prune:type_name -> subcommands.OptBool
-	75,  // 311: subcommands.GitPushArguments.mirror:type_name -> subcommands.OptBool
-	75,  // 312: subcommands.GitPushArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 313: subcommands.GitPushArguments.porcelain:type_name -> subcommands.OptBool
-	75,  // 314: subcommands.GitPushArguments.delete:type_name -> subcommands.OptBool
-	75,  // 315: subcommands.GitPushArguments.tags:type_name -> subcommands.OptBool
-	75,  // 316: subcommands.GitPushArguments.follow_tags:type_name -> subcommands.OptBool
-	75,  // 317: subcommands.GitPushArguments.force:type_name -> subcommands.OptBool
-	75,  // 318: subcommands.GitPushArguments.force_with_lease_flag:type_name -> subcommands.OptBool
-	80,  // 319: subcommands.GitPushArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	75,  // 320: subcommands.GitPushArguments.thin:type_name -> subcommands.OptBool
-	75,  // 321: subcommands.GitPushArguments.atomic:type_name -> subcommands.OptBool
-	75,  // 322: subcommands.GitPushArguments.signed:type_name -> subcommands.OptBool
-	75,  // 323: subcommands.GitPushArguments.verify:type_name -> subcommands.OptBool
-	75,  // 324: subcommands.GitPushArguments.set_upstream:type_name -> subcommands.OptBool
-	75,  // 325: subcommands.GitPushArguments.progress:type_name -> subcommands.OptBool
-	75,  // 326: subcommands.GitPushArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 327: subcommands.GitPushArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 328: subcommands.GitPushArguments.ipv4:type_name -> subcommands.OptBool
-	75,  // 329: subcommands.GitPushArguments.ipv6:type_name -> subcommands.OptBool
-	75,  // 330: subcommands.GitRangeDiffArguments.creation_factor:type_name -> subcommands.OptBool
-	75,  // 331: subcommands.GitRangeDiffArguments.no_dual_color:type_name -> subcommands.OptBool
-	75,  // 332: subcommands.GitRangeDiffArguments.notes_flag:type_name -> subcommands.OptBool
-	75,  // 333: subcommands.GitRangeDiffArguments.left_only:type_name -> subcommands.OptBool
-	75,  // 334: subcommands.GitRangeDiffArguments.right_only:type_name -> subcommands.OptBool
-	77,  // 335: subcommands.GitRangeDiffArguments.pathspec:type_name -> subcommands.Pathspec
-	6,   // 336: subcommands.GitRebaseArguments.control:type_name -> subcommands.GitRebaseArguments.Control
-	75,  // 337: subcommands.GitRebaseArguments.interactive:type_name -> subcommands.OptBool
-	75,  // 338: subcommands.GitRebaseArguments.root:type_name -> subcommands.OptBool
-	75,  // 339: subcommands.GitRebaseArguments.preserve_merges:type_name -> subcommands.OptBool
-	75,  // 340: subcommands.GitRebaseArguments.rebase_merges:type_name -> subcommands.OptBool
-	75,  // 341: subcommands.GitRebaseArguments.autosquash:type_name -> subcommands.OptBool
-	75,  // 342: subcommands.GitRebaseArguments.autostash:type_name -> subcommands.OptBool
-	75,  // 343: subcommands.GitRebaseArguments.fork_point:type_name -> subcommands.OptBool
-	89,  // 344: subcommands.GitRebaseArguments.fast_forward:type_name -> subcommands.FastForward
-	75,  // 345: subcommands.GitRebaseArguments.keep_empty:type_name -> subcommands.OptBool
-	75,  // 346: subcommands.GitRebaseArguments.empty:type_name -> subcommands.OptBool
-	75,  // 347: subcommands.GitRebaseArguments.no_verify:type_name -> subcommands.OptBool
-	75,  // 348: subcommands.GitRebaseArguments.verify:type_name -> subcommands.OptBool
-	75,  // 349: subcommands.GitRebaseArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 350: subcommands.GitRebaseArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 351: subcommands.GitRebaseArguments.stat:type_name -> subcommands.OptBool
-	81,  // 352: subcommands.GitRebaseArguments.gpg_sign:type_name -> subcommands.GpgSign
-	75,  // 353: subcommands.GitRebaseArguments.signoff:type_name -> subcommands.OptBool
-	75,  // 354: subcommands.GitRebaseArguments.exec:type_name -> subcommands.OptBool
-	75,  // 355: subcommands.GitRebaseArguments.reschedule_failed_exec:type_name -> subcommands.OptBool
-	75,  // 356: subcommands.GitRebaseArguments.update_refs:type_name -> subcommands.OptBool
-	7,   // 357: subcommands.GitResetArguments.mode:type_name -> subcommands.GitResetArguments.Mode
-	75,  // 358: subcommands.GitResetArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 359: subcommands.GitResetArguments.no_refresh:type_name -> subcommands.OptBool
-	75,  // 360: subcommands.GitResetArguments.patch:type_name -> subcommands.OptBool
-	77,  // 361: subcommands.GitResetArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 362: subcommands.GitRestoreArguments.patch:type_name -> subcommands.OptBool
-	75,  // 363: subcommands.GitRestoreArguments.worktree:type_name -> subcommands.OptBool
-	75,  // 364: subcommands.GitRestoreArguments.staged:type_name -> subcommands.OptBool
-	75,  // 365: subcommands.GitRestoreArguments.ours:type_name -> subcommands.OptBool
-	75,  // 366: subcommands.GitRestoreArguments.theirs:type_name -> subcommands.OptBool
-	75,  // 367: subcommands.GitRestoreArguments.merge:type_name -> subcommands.OptBool
-	75,  // 368: subcommands.GitRestoreArguments.ignore_unmerged:type_name -> subcommands.OptBool
-	75,  // 369: subcommands.GitRestoreArguments.ignore_skip_worktree_bits:type_name -> subcommands.OptBool
-	80,  // 370: subcommands.GitRestoreArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	75,  // 371: subcommands.GitRestoreArguments.overlay:type_name -> subcommands.OptBool
-	75,  // 372: subcommands.GitRestoreArguments.progress:type_name -> subcommands.OptBool
-	75,  // 373: subcommands.GitRestoreArguments.quiet:type_name -> subcommands.OptBool
-	77,  // 374: subcommands.GitRestoreArguments.pathspec:type_name -> subcommands.Pathspec
-	8,   // 375: subcommands.GitRevertArguments.control:type_name -> subcommands.GitRevertArguments.Control
-	75,  // 376: subcommands.GitRevertArguments.edit:type_name -> subcommands.OptBool
-	75,  // 377: subcommands.GitRevertArguments.no_edit:type_name -> subcommands.OptBool
-	75,  // 378: subcommands.GitRevertArguments.no_commit:type_name -> subcommands.OptBool
-	81,  // 379: subcommands.GitRevertArguments.gpg_sign:type_name -> subcommands.GpgSign
-	75,  // 380: subcommands.GitRevertArguments.signoff:type_name -> subcommands.OptBool
-	75,  // 381: subcommands.GitRevertArguments.rerere_autoupdate:type_name -> subcommands.OptBool
-	75,  // 382: subcommands.GitRevertArguments.reference:type_name -> subcommands.OptBool
-	75,  // 383: subcommands.GitRmArguments.force:type_name -> subcommands.OptBool
-	75,  // 384: subcommands.GitRmArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 385: subcommands.GitRmArguments.recursive:type_name -> subcommands.OptBool
-	75,  // 386: subcommands.GitRmArguments.cached:type_name -> subcommands.OptBool
-	75,  // 387: subcommands.GitRmArguments.ignore_unmatch:type_name -> subcommands.OptBool
-	75,  // 388: subcommands.GitRmArguments.sparse:type_name -> subcommands.OptBool
-	75,  // 389: subcommands.GitRmArguments.quiet:type_name -> subcommands.OptBool
-	77,  // 390: subcommands.GitRmArguments.pathspec:type_name -> subcommands.Pathspec
-	75,  // 391: subcommands.GitShortlogArguments.numbered:type_name -> subcommands.OptBool
-	75,  // 392: subcommands.GitShortlogArguments.summary:type_name -> subcommands.OptBool
-	75,  // 393: subcommands.GitShortlogArguments.email:type_name -> subcommands.OptBool
-	75,  // 394: subcommands.GitShortlogArguments.committer:type_name -> subcommands.OptBool
-	77,  // 395: subcommands.GitShortlogArguments.pathspec:type_name -> subcommands.Pathspec
-	86,  // 396: subcommands.GitShowArguments.formatting:type_name -> subcommands.DiffFormatting
-	75,  // 397: subcommands.GitShowArguments.pretty_flag:type_name -> subcommands.OptBool
-	75,  // 398: subcommands.GitShowArguments.abbrev_commit:type_name -> subcommands.OptBool
-	75,  // 399: subcommands.GitShowArguments.no_abbrev_commit:type_name -> subcommands.OptBool
-	75,  // 400: subcommands.GitShowArguments.oneline:type_name -> subcommands.OptBool
-	75,  // 401: subcommands.GitShowArguments.expand_tabs:type_name -> subcommands.OptBool
-	87,  // 402: subcommands.GitShowArguments.expand_tabs_width:type_name -> subcommands.OptInt
-	75,  // 403: subcommands.GitShowArguments.no_expand_tabs:type_name -> subcommands.OptBool
-	75,  // 404: subcommands.GitShowArguments.notes:type_name -> subcommands.OptBool
-	75,  // 405: subcommands.GitShowArguments.no_notes:type_name -> subcommands.OptBool
-	75,  // 406: subcommands.GitShowArguments.show_notes:type_name -> subcommands.OptBool
-	75,  // 407: subcommands.GitShowArguments.standard_notes:type_name -> subcommands.OptBool
-	75,  // 408: subcommands.GitShowArguments.show_signature:type_name -> subcommands.OptBool
-	75,  // 409: subcommands.GitShowArguments.no_diff_merges:type_name -> subcommands.OptBool
-	75,  // 410: subcommands.GitShowArguments.combined_all_paths:type_name -> subcommands.OptBool
-	75,  // 411: subcommands.GitShowArguments.dash_t:type_name -> subcommands.OptBool
-	9,   // 412: subcommands.GitSparseCheckoutArguments.verb:type_name -> subcommands.GitSparseCheckoutArguments.Verb
-	75,  // 413: subcommands.GitSparseCheckoutArguments.cone:type_name -> subcommands.OptBool
-	75,  // 414: subcommands.GitSparseCheckoutArguments.sparse_index:type_name -> subcommands.OptBool
-	75,  // 415: subcommands.GitSparseCheckoutArguments.stdin_input:type_name -> subcommands.OptBool
-	75,  // 416: subcommands.GitSparseCheckoutArguments.skip_checks:type_name -> subcommands.OptBool
-	59,  // 417: subcommands.GitStashArguments.push:type_name -> subcommands.StashPush
-	60,  // 418: subcommands.GitStashArguments.list:type_name -> subcommands.StashList
-	61,  // 419: subcommands.GitStashArguments.show:type_name -> subcommands.StashShow
-	62,  // 420: subcommands.GitStashArguments.drop:type_name -> subcommands.StashDrop
-	63,  // 421: subcommands.GitStashArguments.pop:type_name -> subcommands.StashPop
-	64,  // 422: subcommands.GitStashArguments.apply:type_name -> subcommands.StashApply
-	65,  // 423: subcommands.GitStashArguments.branch:type_name -> subcommands.StashBranch
-	66,  // 424: subcommands.GitStashArguments.clear:type_name -> subcommands.StashClear
-	67,  // 425: subcommands.GitStashArguments.create:type_name -> subcommands.StashCreate
-	68,  // 426: subcommands.GitStashArguments.store:type_name -> subcommands.StashStore
-	75,  // 427: subcommands.StashPush.patch:type_name -> subcommands.OptBool
-	75,  // 428: subcommands.StashPush.keep_index:type_name -> subcommands.OptBool
-	75,  // 429: subcommands.StashPush.staged:type_name -> subcommands.OptBool
-	75,  // 430: subcommands.StashPush.include_untracked:type_name -> subcommands.OptBool
-	75,  // 431: subcommands.StashPush.all:type_name -> subcommands.OptBool
-	75,  // 432: subcommands.StashPush.quiet:type_name -> subcommands.OptBool
-	77,  // 433: subcommands.StashPush.pathspec:type_name -> subcommands.Pathspec
-	75,  // 434: subcommands.StashShow.include_untracked:type_name -> subcommands.OptBool
-	75,  // 435: subcommands.StashShow.only_untracked:type_name -> subcommands.OptBool
-	75,  // 436: subcommands.StashShow.patch:type_name -> subcommands.OptBool
-	75,  // 437: subcommands.StashShow.stat:type_name -> subcommands.OptBool
-	75,  // 438: subcommands.StashDrop.quiet:type_name -> subcommands.OptBool
-	75,  // 439: subcommands.StashPop.index:type_name -> subcommands.OptBool
-	75,  // 440: subcommands.StashPop.quiet:type_name -> subcommands.OptBool
-	75,  // 441: subcommands.StashApply.index:type_name -> subcommands.OptBool
-	75,  // 442: subcommands.StashApply.quiet:type_name -> subcommands.OptBool
-	75,  // 443: subcommands.StashStore.quiet:type_name -> subcommands.OptBool
-	85,  // 444: subcommands.GitStatusArguments.format:type_name -> subcommands.StatusFormat
-	75,  // 445: subcommands.GitStatusArguments.branch:type_name -> subcommands.OptBool
-	75,  // 446: subcommands.GitStatusArguments.show_stash:type_name -> subcommands.OptBool
-	75,  // 447: subcommands.GitStatusArguments.ahead_behind:type_name -> subcommands.OptBool
-	84,  // 448: subcommands.GitStatusArguments.untracked_files:type_name -> subcommands.UntrackedFilesMode
-	90,  // 449: subcommands.GitStatusArguments.ignored:type_name -> subcommands.IgnoredMode
-	75,  // 450: subcommands.GitStatusArguments.no_ignored_pathspec_for_dirs:type_name -> subcommands.OptBool
-	75,  // 451: subcommands.GitStatusArguments.z:type_name -> subcommands.OptBool
-	75,  // 452: subcommands.GitStatusArguments.no_column:type_name -> subcommands.OptBool
-	80,  // 453: subcommands.GitStatusArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	75,  // 454: subcommands.GitStatusArguments.verbose:type_name -> subcommands.OptBool
-	77,  // 455: subcommands.GitStatusArguments.pathspec:type_name -> subcommands.Pathspec
-	10,  // 456: subcommands.GitSubmoduleArguments.verb:type_name -> subcommands.GitSubmoduleArguments.Verb
-	75,  // 457: subcommands.GitSubmoduleArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 458: subcommands.GitSubmoduleArguments.cached:type_name -> subcommands.OptBool
-	75,  // 459: subcommands.GitSubmoduleArguments.recursive:type_name -> subcommands.OptBool
-	75,  // 460: subcommands.GitSubmoduleArguments.force:type_name -> subcommands.OptBool
-	75,  // 461: subcommands.GitSubmoduleArguments.init:type_name -> subcommands.OptBool
-	75,  // 462: subcommands.GitSubmoduleArguments.remote:type_name -> subcommands.OptBool
-	75,  // 463: subcommands.GitSubmoduleArguments.merge:type_name -> subcommands.OptBool
-	75,  // 464: subcommands.GitSubmoduleArguments.rebase:type_name -> subcommands.OptBool
-	75,  // 465: subcommands.GitSubmoduleArguments.checkout:type_name -> subcommands.OptBool
-	75,  // 466: subcommands.GitSubmoduleArguments.no_fetch:type_name -> subcommands.OptBool
-	75,  // 467: subcommands.GitSubmoduleArguments.progress:type_name -> subcommands.OptBool
-	75,  // 468: subcommands.GitSwitchArguments.quiet:type_name -> subcommands.OptBool
-	75,  // 469: subcommands.GitSwitchArguments.progress:type_name -> subcommands.OptBool
-	75,  // 470: subcommands.GitSwitchArguments.detach:type_name -> subcommands.OptBool
-	78,  // 471: subcommands.GitSwitchArguments.track:type_name -> subcommands.BranchTrackMode
-	75,  // 472: subcommands.GitSwitchArguments.guess:type_name -> subcommands.OptBool
-	75,  // 473: subcommands.GitSwitchArguments.discard_changes:type_name -> subcommands.OptBool
-	75,  // 474: subcommands.GitSwitchArguments.merge:type_name -> subcommands.OptBool
-	75,  // 475: subcommands.GitSwitchArguments.ignore_other_worktrees:type_name -> subcommands.OptBool
-	80,  // 476: subcommands.GitSwitchArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
-	11,  // 477: subcommands.GitTagArguments.action:type_name -> subcommands.GitTagArguments.Action
-	75,  // 478: subcommands.GitTagArguments.annotate:type_name -> subcommands.OptBool
-	75,  // 479: subcommands.GitTagArguments.sign:type_name -> subcommands.OptBool
-	81,  // 480: subcommands.GitTagArguments.gpg_sign:type_name -> subcommands.GpgSign
-	75,  // 481: subcommands.GitTagArguments.force:type_name -> subcommands.OptBool
-	83,  // 482: subcommands.GitTagArguments.message:type_name -> subcommands.MessageSource
-	75,  // 483: subcommands.GitTagArguments.cleanup:type_name -> subcommands.OptBool
-	75,  // 484: subcommands.GitTagArguments.edit:type_name -> subcommands.OptBool
-	79,  // 485: subcommands.GitTagArguments.color:type_name -> subcommands.ColorWhen
-	75,  // 486: subcommands.GitTagArguments.ignore_case:type_name -> subcommands.OptBool
-	12,  // 487: subcommands.GitWorktreeArguments.verb:type_name -> subcommands.GitWorktreeArguments.Verb
-	75,  // 488: subcommands.GitWorktreeArguments.force:type_name -> subcommands.OptBool
-	75,  // 489: subcommands.GitWorktreeArguments.detach:type_name -> subcommands.OptBool
-	75,  // 490: subcommands.GitWorktreeArguments.checkout:type_name -> subcommands.OptBool
-	75,  // 491: subcommands.GitWorktreeArguments.lock:type_name -> subcommands.OptBool
-	75,  // 492: subcommands.GitWorktreeArguments.track:type_name -> subcommands.OptBool
-	75,  // 493: subcommands.GitWorktreeArguments.porcelain:type_name -> subcommands.OptBool
-	75,  // 494: subcommands.GitWorktreeArguments.z:type_name -> subcommands.OptBool
-	75,  // 495: subcommands.GitWorktreeArguments.verbose:type_name -> subcommands.OptBool
-	75,  // 496: subcommands.GitWorktreeArguments.dry_run:type_name -> subcommands.OptBool
-	75,  // 497: subcommands.GitWorktreeArguments.relative_paths:type_name -> subcommands.OptBool
-	498, // [498:498] is the sub-list for method output_type
-	498, // [498:498] is the sub-list for method input_type
-	498, // [498:498] is the sub-list for extension type_name
-	498, // [498:498] is the sub-list for extension extendee
-	0,   // [0:498] is the sub-list for field type_name
+	74,  // 37: subcommands.Subcommand.clone:type_name -> subcommands.GitCloneArguments
+	75,  // 38: subcommands.Subcommand.fetch:type_name -> subcommands.GitFetchArguments
+	76,  // 39: subcommands.Subcommand.pull:type_name -> subcommands.GitPullArguments
+	78,  // 40: subcommands.GitAddArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 41: subcommands.GitAddArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 42: subcommands.GitAddArguments.force:type_name -> subcommands.OptBool
+	78,  // 43: subcommands.GitAddArguments.interactive:type_name -> subcommands.OptBool
+	78,  // 44: subcommands.GitAddArguments.patch:type_name -> subcommands.OptBool
+	78,  // 45: subcommands.GitAddArguments.edit:type_name -> subcommands.OptBool
+	78,  // 46: subcommands.GitAddArguments.all:type_name -> subcommands.OptBool
+	78,  // 47: subcommands.GitAddArguments.ignore_removal:type_name -> subcommands.OptBool
+	78,  // 48: subcommands.GitAddArguments.update:type_name -> subcommands.OptBool
+	78,  // 49: subcommands.GitAddArguments.sparse:type_name -> subcommands.OptBool
+	78,  // 50: subcommands.GitAddArguments.intent_to_add:type_name -> subcommands.OptBool
+	78,  // 51: subcommands.GitAddArguments.refresh:type_name -> subcommands.OptBool
+	78,  // 52: subcommands.GitAddArguments.ignore_errors:type_name -> subcommands.OptBool
+	78,  // 53: subcommands.GitAddArguments.ignore_missing:type_name -> subcommands.OptBool
+	78,  // 54: subcommands.GitAddArguments.renormalize:type_name -> subcommands.OptBool
+	79,  // 55: subcommands.GitAddArguments.chmod:type_name -> subcommands.ChmodExecutable
+	80,  // 56: subcommands.GitAddArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 57: subcommands.GitArchiveArguments.list:type_name -> subcommands.OptBool
+	78,  // 58: subcommands.GitArchiveArguments.worktree_attributes:type_name -> subcommands.OptBool
+	78,  // 59: subcommands.GitArchiveArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 60: subcommands.GitBackfillArguments.sparse:type_name -> subcommands.OptBool
+	18,  // 61: subcommands.GitBisectArguments.start:type_name -> subcommands.BisectStart
+	19,  // 62: subcommands.GitBisectArguments.bad:type_name -> subcommands.BisectMark
+	19,  // 63: subcommands.GitBisectArguments.good:type_name -> subcommands.BisectMark
+	20,  // 64: subcommands.GitBisectArguments.skip:type_name -> subcommands.BisectSkip
+	21,  // 65: subcommands.GitBisectArguments.terms:type_name -> subcommands.BisectTerms
+	22,  // 66: subcommands.GitBisectArguments.reset:type_name -> subcommands.BisectReset
+	23,  // 67: subcommands.GitBisectArguments.replay:type_name -> subcommands.BisectReplay
+	24,  // 68: subcommands.GitBisectArguments.run:type_name -> subcommands.BisectRun
+	25,  // 69: subcommands.GitBisectArguments.log:type_name -> subcommands.BisectLog
+	26,  // 70: subcommands.GitBisectArguments.next:type_name -> subcommands.BisectNext
+	27,  // 71: subcommands.GitBisectArguments.visualize:type_name -> subcommands.BisectVisualize
+	28,  // 72: subcommands.GitBisectArguments.help:type_name -> subcommands.BisectHelp
+	78,  // 73: subcommands.BisectStart.no_checkout:type_name -> subcommands.OptBool
+	78,  // 74: subcommands.BisectStart.first_parent:type_name -> subcommands.OptBool
+	80,  // 75: subcommands.BisectStart.pathspec:type_name -> subcommands.Pathspec
+	78,  // 76: subcommands.BisectTerms.term_good:type_name -> subcommands.OptBool
+	78,  // 77: subcommands.BisectTerms.term_bad:type_name -> subcommands.OptBool
+	1,   // 78: subcommands.GitBranchArguments.action:type_name -> subcommands.GitBranchArguments.Action
+	78,  // 79: subcommands.GitBranchArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 80: subcommands.GitBranchArguments.quiet:type_name -> subcommands.OptBool
+	81,  // 81: subcommands.GitBranchArguments.track:type_name -> subcommands.BranchTrackMode
+	78,  // 82: subcommands.GitBranchArguments.unset_upstream:type_name -> subcommands.OptBool
+	82,  // 83: subcommands.GitBranchArguments.color:type_name -> subcommands.ColorWhen
+	78,  // 84: subcommands.GitBranchArguments.no_color:type_name -> subcommands.OptBool
+	78,  // 85: subcommands.GitBranchArguments.remotes:type_name -> subcommands.OptBool
+	78,  // 86: subcommands.GitBranchArguments.all:type_name -> subcommands.OptBool
+	78,  // 87: subcommands.GitBranchArguments.no_abbrev:type_name -> subcommands.OptBool
+	78,  // 88: subcommands.GitBranchArguments.ignore_case:type_name -> subcommands.OptBool
+	83,  // 89: subcommands.GitBranchArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 90: subcommands.GitBranchArguments.force:type_name -> subcommands.OptBool
+	78,  // 91: subcommands.GitBranchArguments.create_reflog:type_name -> subcommands.OptBool
+	31,  // 92: subcommands.GitBundleArguments.create:type_name -> subcommands.BundleCreate
+	32,  // 93: subcommands.GitBundleArguments.verify:type_name -> subcommands.BundleVerify
+	33,  // 94: subcommands.GitBundleArguments.list_heads:type_name -> subcommands.BundleListHeads
+	34,  // 95: subcommands.GitBundleArguments.unbundle:type_name -> subcommands.BundleUnbundle
+	78,  // 96: subcommands.BundleCreate.quiet:type_name -> subcommands.OptBool
+	78,  // 97: subcommands.BundleCreate.progress:type_name -> subcommands.OptBool
+	78,  // 98: subcommands.BundleCreate.all_progress:type_name -> subcommands.OptBool
+	78,  // 99: subcommands.BundleCreate.all_progress_implied:type_name -> subcommands.OptBool
+	78,  // 100: subcommands.BundleVerify.quiet:type_name -> subcommands.OptBool
+	78,  // 101: subcommands.BundleUnbundle.progress:type_name -> subcommands.OptBool
+	78,  // 102: subcommands.GitCheckoutArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 103: subcommands.GitCheckoutArguments.progress:type_name -> subcommands.OptBool
+	78,  // 104: subcommands.GitCheckoutArguments.force:type_name -> subcommands.OptBool
+	78,  // 105: subcommands.GitCheckoutArguments.ours:type_name -> subcommands.OptBool
+	78,  // 106: subcommands.GitCheckoutArguments.theirs:type_name -> subcommands.OptBool
+	81,  // 107: subcommands.GitCheckoutArguments.track:type_name -> subcommands.BranchTrackMode
+	78,  // 108: subcommands.GitCheckoutArguments.guess:type_name -> subcommands.OptBool
+	78,  // 109: subcommands.GitCheckoutArguments.detach:type_name -> subcommands.OptBool
+	78,  // 110: subcommands.GitCheckoutArguments.ignore_skip_worktree_bits:type_name -> subcommands.OptBool
+	78,  // 111: subcommands.GitCheckoutArguments.merge:type_name -> subcommands.OptBool
+	78,  // 112: subcommands.GitCheckoutArguments.patch:type_name -> subcommands.OptBool
+	83,  // 113: subcommands.GitCheckoutArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 114: subcommands.GitCheckoutArguments.overlay:type_name -> subcommands.OptBool
+	78,  // 115: subcommands.GitCheckoutArguments.pathspec_file_nul:type_name -> subcommands.OptBool
+	80,  // 116: subcommands.GitCheckoutArguments.pathspec:type_name -> subcommands.Pathspec
+	2,   // 117: subcommands.GitCherryPickArguments.control:type_name -> subcommands.GitCherryPickArguments.Control
+	78,  // 118: subcommands.GitCherryPickArguments.edit:type_name -> subcommands.OptBool
+	78,  // 119: subcommands.GitCherryPickArguments.no_commit:type_name -> subcommands.OptBool
+	78,  // 120: subcommands.GitCherryPickArguments.signoff:type_name -> subcommands.OptBool
+	84,  // 121: subcommands.GitCherryPickArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 122: subcommands.GitCherryPickArguments.fast_forward:type_name -> subcommands.OptBool
+	78,  // 123: subcommands.GitCherryPickArguments.allow_empty:type_name -> subcommands.OptBool
+	78,  // 124: subcommands.GitCherryPickArguments.allow_empty_message:type_name -> subcommands.OptBool
+	78,  // 125: subcommands.GitCherryPickArguments.keep_redundant_commits:type_name -> subcommands.OptBool
+	78,  // 126: subcommands.GitCherryPickArguments.reference:type_name -> subcommands.OptBool
+	78,  // 127: subcommands.GitCherryPickArguments.x:type_name -> subcommands.OptBool
+	78,  // 128: subcommands.GitCleanArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 129: subcommands.GitCleanArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 130: subcommands.GitCleanArguments.force:type_name -> subcommands.OptBool
+	78,  // 131: subcommands.GitCleanArguments.interactive:type_name -> subcommands.OptBool
+	78,  // 132: subcommands.GitCleanArguments.directories:type_name -> subcommands.OptBool
+	78,  // 133: subcommands.GitCleanArguments.include_ignored:type_name -> subcommands.OptBool
+	78,  // 134: subcommands.GitCleanArguments.only_ignored:type_name -> subcommands.OptBool
+	80,  // 135: subcommands.GitCleanArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 136: subcommands.GitCommitArguments.all:type_name -> subcommands.OptBool
+	78,  // 137: subcommands.GitCommitArguments.patch:type_name -> subcommands.OptBool
+	78,  // 138: subcommands.GitCommitArguments.reset_author:type_name -> subcommands.OptBool
+	85,  // 139: subcommands.GitCommitArguments.identity:type_name -> subcommands.IdentityOverride
+	86,  // 140: subcommands.GitCommitArguments.message:type_name -> subcommands.MessageSource
+	78,  // 141: subcommands.GitCommitArguments.allow_empty:type_name -> subcommands.OptBool
+	78,  // 142: subcommands.GitCommitArguments.allow_empty_message:type_name -> subcommands.OptBool
+	78,  // 143: subcommands.GitCommitArguments.no_verify:type_name -> subcommands.OptBool
+	78,  // 144: subcommands.GitCommitArguments.edit:type_name -> subcommands.OptBool
+	78,  // 145: subcommands.GitCommitArguments.amend:type_name -> subcommands.OptBool
+	78,  // 146: subcommands.GitCommitArguments.no_post_rewrite:type_name -> subcommands.OptBool
+	78,  // 147: subcommands.GitCommitArguments.signoff:type_name -> subcommands.OptBool
+	84,  // 148: subcommands.GitCommitArguments.gpg_sign:type_name -> subcommands.GpgSign
+	87,  // 149: subcommands.GitCommitArguments.untracked_files:type_name -> subcommands.UntrackedFilesMode
+	78,  // 150: subcommands.GitCommitArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 151: subcommands.GitCommitArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 152: subcommands.GitCommitArguments.dry_run:type_name -> subcommands.OptBool
+	88,  // 153: subcommands.GitCommitArguments.status_format:type_name -> subcommands.StatusFormat
+	78,  // 154: subcommands.GitCommitArguments.include_status:type_name -> subcommands.OptBool
+	78,  // 155: subcommands.GitCommitArguments.branch:type_name -> subcommands.OptBool
+	78,  // 156: subcommands.GitCommitArguments.ahead_behind:type_name -> subcommands.OptBool
+	78,  // 157: subcommands.GitCommitArguments.z:type_name -> subcommands.OptBool
+	78,  // 158: subcommands.GitCommitArguments.include:type_name -> subcommands.OptBool
+	78,  // 159: subcommands.GitCommitArguments.only:type_name -> subcommands.OptBool
+	80,  // 160: subcommands.GitCommitArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 161: subcommands.GitDescribeArguments.all:type_name -> subcommands.OptBool
+	78,  // 162: subcommands.GitDescribeArguments.tags:type_name -> subcommands.OptBool
+	78,  // 163: subcommands.GitDescribeArguments.contains:type_name -> subcommands.OptBool
+	78,  // 164: subcommands.GitDescribeArguments.dirty:type_name -> subcommands.OptBool
+	78,  // 165: subcommands.GitDescribeArguments.broken:type_name -> subcommands.OptBool
+	78,  // 166: subcommands.GitDescribeArguments.exact_match:type_name -> subcommands.OptBool
+	78,  // 167: subcommands.GitDescribeArguments.debug:type_name -> subcommands.OptBool
+	78,  // 168: subcommands.GitDescribeArguments.long:type_name -> subcommands.OptBool
+	78,  // 169: subcommands.GitDescribeArguments.always:type_name -> subcommands.OptBool
+	78,  // 170: subcommands.GitDescribeArguments.first_parent:type_name -> subcommands.OptBool
+	89,  // 171: subcommands.GitDiffArguments.formatting:type_name -> subcommands.DiffFormatting
+	78,  // 172: subcommands.GitDiffArguments.cached:type_name -> subcommands.OptBool
+	78,  // 173: subcommands.GitDiffArguments.staged:type_name -> subcommands.OptBool
+	78,  // 174: subcommands.GitDiffArguments.merge_base:type_name -> subcommands.OptBool
+	78,  // 175: subcommands.GitDiffArguments.no_index:type_name -> subcommands.OptBool
+	78,  // 176: subcommands.GitDiffArguments.index:type_name -> subcommands.OptBool
+	78,  // 177: subcommands.GitDiffArguments.base:type_name -> subcommands.OptBool
+	78,  // 178: subcommands.GitDiffArguments.ours:type_name -> subcommands.OptBool
+	78,  // 179: subcommands.GitDiffArguments.theirs:type_name -> subcommands.OptBool
+	78,  // 180: subcommands.GitDiffArguments.combined_diff:type_name -> subcommands.OptBool
+	80,  // 181: subcommands.GitDiffArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 182: subcommands.GitGcArguments.aggressive:type_name -> subcommands.OptBool
+	78,  // 183: subcommands.GitGcArguments.auto:type_name -> subcommands.OptBool
+	78,  // 184: subcommands.GitGcArguments.no_prune:type_name -> subcommands.OptBool
+	78,  // 185: subcommands.GitGcArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 186: subcommands.GitGcArguments.force:type_name -> subcommands.OptBool
+	78,  // 187: subcommands.GitGcArguments.keep_largest_pack:type_name -> subcommands.OptBool
+	78,  // 188: subcommands.GitGcArguments.cruft:type_name -> subcommands.OptBool
+	78,  // 189: subcommands.GitInitArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 190: subcommands.GitInitArguments.bare:type_name -> subcommands.OptBool
+	78,  // 191: subcommands.GitInitArguments.shared_flag:type_name -> subcommands.OptBool
+	89,  // 192: subcommands.GitLogArguments.formatting:type_name -> subcommands.DiffFormatting
+	90,  // 193: subcommands.GitLogArguments.max_count:type_name -> subcommands.OptInt
+	90,  // 194: subcommands.GitLogArguments.skip:type_name -> subcommands.OptInt
+	78,  // 195: subcommands.GitLogArguments.all_match:type_name -> subcommands.OptBool
+	78,  // 196: subcommands.GitLogArguments.invert_grep:type_name -> subcommands.OptBool
+	78,  // 197: subcommands.GitLogArguments.regexp_ignore_case:type_name -> subcommands.OptBool
+	78,  // 198: subcommands.GitLogArguments.basic_regexp:type_name -> subcommands.OptBool
+	78,  // 199: subcommands.GitLogArguments.extended_regexp:type_name -> subcommands.OptBool
+	78,  // 200: subcommands.GitLogArguments.fixed_strings:type_name -> subcommands.OptBool
+	78,  // 201: subcommands.GitLogArguments.perl_regexp:type_name -> subcommands.OptBool
+	78,  // 202: subcommands.GitLogArguments.remove_empty:type_name -> subcommands.OptBool
+	78,  // 203: subcommands.GitLogArguments.merges:type_name -> subcommands.OptBool
+	78,  // 204: subcommands.GitLogArguments.no_merges:type_name -> subcommands.OptBool
+	90,  // 205: subcommands.GitLogArguments.min_parents:type_name -> subcommands.OptInt
+	90,  // 206: subcommands.GitLogArguments.max_parents:type_name -> subcommands.OptInt
+	78,  // 207: subcommands.GitLogArguments.no_min_parents:type_name -> subcommands.OptBool
+	78,  // 208: subcommands.GitLogArguments.no_max_parents:type_name -> subcommands.OptBool
+	78,  // 209: subcommands.GitLogArguments.first_parent:type_name -> subcommands.OptBool
+	78,  // 210: subcommands.GitLogArguments.exclude_first_parent_only:type_name -> subcommands.OptBool
+	78,  // 211: subcommands.GitLogArguments.not:type_name -> subcommands.OptBool
+	78,  // 212: subcommands.GitLogArguments.all:type_name -> subcommands.OptBool
+	78,  // 213: subcommands.GitLogArguments.branches:type_name -> subcommands.OptBool
+	78,  // 214: subcommands.GitLogArguments.tags:type_name -> subcommands.OptBool
+	78,  // 215: subcommands.GitLogArguments.remotes:type_name -> subcommands.OptBool
+	78,  // 216: subcommands.GitLogArguments.reflog:type_name -> subcommands.OptBool
+	78,  // 217: subcommands.GitLogArguments.alternate_refs:type_name -> subcommands.OptBool
+	78,  // 218: subcommands.GitLogArguments.single_worktree:type_name -> subcommands.OptBool
+	78,  // 219: subcommands.GitLogArguments.ignore_missing:type_name -> subcommands.OptBool
+	78,  // 220: subcommands.GitLogArguments.bisect:type_name -> subcommands.OptBool
+	78,  // 221: subcommands.GitLogArguments.stdin:type_name -> subcommands.OptBool
+	78,  // 222: subcommands.GitLogArguments.cherry_mark:type_name -> subcommands.OptBool
+	78,  // 223: subcommands.GitLogArguments.cherry_pick:type_name -> subcommands.OptBool
+	78,  // 224: subcommands.GitLogArguments.left_only:type_name -> subcommands.OptBool
+	78,  // 225: subcommands.GitLogArguments.right_only:type_name -> subcommands.OptBool
+	78,  // 226: subcommands.GitLogArguments.cherry:type_name -> subcommands.OptBool
+	78,  // 227: subcommands.GitLogArguments.walk_reflogs:type_name -> subcommands.OptBool
+	78,  // 228: subcommands.GitLogArguments.merge:type_name -> subcommands.OptBool
+	78,  // 229: subcommands.GitLogArguments.boundary:type_name -> subcommands.OptBool
+	78,  // 230: subcommands.GitLogArguments.simplify_by_decoration:type_name -> subcommands.OptBool
+	78,  // 231: subcommands.GitLogArguments.show_pulls:type_name -> subcommands.OptBool
+	78,  // 232: subcommands.GitLogArguments.full_history:type_name -> subcommands.OptBool
+	78,  // 233: subcommands.GitLogArguments.dense:type_name -> subcommands.OptBool
+	78,  // 234: subcommands.GitLogArguments.sparse:type_name -> subcommands.OptBool
+	78,  // 235: subcommands.GitLogArguments.simplify_merges:type_name -> subcommands.OptBool
+	78,  // 236: subcommands.GitLogArguments.ancestry_path:type_name -> subcommands.OptBool
+	78,  // 237: subcommands.GitLogArguments.date_order:type_name -> subcommands.OptBool
+	78,  // 238: subcommands.GitLogArguments.author_date_order:type_name -> subcommands.OptBool
+	78,  // 239: subcommands.GitLogArguments.topo_order:type_name -> subcommands.OptBool
+	78,  // 240: subcommands.GitLogArguments.reverse:type_name -> subcommands.OptBool
+	78,  // 241: subcommands.GitLogArguments.no_walk:type_name -> subcommands.OptBool
+	78,  // 242: subcommands.GitLogArguments.do_walk:type_name -> subcommands.OptBool
+	78,  // 243: subcommands.GitLogArguments.pretty_flag:type_name -> subcommands.OptBool
+	78,  // 244: subcommands.GitLogArguments.abbrev_commit:type_name -> subcommands.OptBool
+	78,  // 245: subcommands.GitLogArguments.no_abbrev_commit:type_name -> subcommands.OptBool
+	78,  // 246: subcommands.GitLogArguments.oneline:type_name -> subcommands.OptBool
+	78,  // 247: subcommands.GitLogArguments.expand_tabs:type_name -> subcommands.OptBool
+	90,  // 248: subcommands.GitLogArguments.expand_tabs_width:type_name -> subcommands.OptInt
+	78,  // 249: subcommands.GitLogArguments.no_expand_tabs:type_name -> subcommands.OptBool
+	78,  // 250: subcommands.GitLogArguments.notes:type_name -> subcommands.OptBool
+	78,  // 251: subcommands.GitLogArguments.no_notes:type_name -> subcommands.OptBool
+	78,  // 252: subcommands.GitLogArguments.show_notes:type_name -> subcommands.OptBool
+	78,  // 253: subcommands.GitLogArguments.standard_notes:type_name -> subcommands.OptBool
+	78,  // 254: subcommands.GitLogArguments.show_signature:type_name -> subcommands.OptBool
+	78,  // 255: subcommands.GitLogArguments.relative_date:type_name -> subcommands.OptBool
+	78,  // 256: subcommands.GitLogArguments.parents:type_name -> subcommands.OptBool
+	78,  // 257: subcommands.GitLogArguments.children:type_name -> subcommands.OptBool
+	78,  // 258: subcommands.GitLogArguments.left_right:type_name -> subcommands.OptBool
+	78,  // 259: subcommands.GitLogArguments.graph:type_name -> subcommands.OptBool
+	78,  // 260: subcommands.GitLogArguments.show_linear_break:type_name -> subcommands.OptBool
+	78,  // 261: subcommands.GitLogArguments.follow:type_name -> subcommands.OptBool
+	78,  // 262: subcommands.GitLogArguments.no_decorate:type_name -> subcommands.OptBool
+	91,  // 263: subcommands.GitLogArguments.decorate:type_name -> subcommands.Decorate
+	78,  // 264: subcommands.GitLogArguments.decorate_flag:type_name -> subcommands.OptBool
+	78,  // 265: subcommands.GitLogArguments.clear_decorations:type_name -> subcommands.OptBool
+	78,  // 266: subcommands.GitLogArguments.source:type_name -> subcommands.OptBool
+	78,  // 267: subcommands.GitLogArguments.mailmap:type_name -> subcommands.OptBool
+	78,  // 268: subcommands.GitLogArguments.use_mailmap:type_name -> subcommands.OptBool
+	78,  // 269: subcommands.GitLogArguments.full_diff:type_name -> subcommands.OptBool
+	78,  // 270: subcommands.GitLogArguments.log_size:type_name -> subcommands.OptBool
+	78,  // 271: subcommands.GitLogArguments.no_diff_merges:type_name -> subcommands.OptBool
+	78,  // 272: subcommands.GitLogArguments.combined_all_paths:type_name -> subcommands.OptBool
+	78,  // 273: subcommands.GitLogArguments.dash_t:type_name -> subcommands.OptBool
+	78,  // 274: subcommands.GitLogArguments.dash_m:type_name -> subcommands.OptBool
+	78,  // 275: subcommands.GitLogArguments.dash_c:type_name -> subcommands.OptBool
+	78,  // 276: subcommands.GitLogArguments.dash_cc:type_name -> subcommands.OptBool
+	78,  // 277: subcommands.GitLogArguments.remerge_diff:type_name -> subcommands.OptBool
+	80,  // 278: subcommands.GitLogArguments.pathspec:type_name -> subcommands.Pathspec
+	3,   // 279: subcommands.GitMaintenanceArguments.verb:type_name -> subcommands.GitMaintenanceArguments.Verb
+	78,  // 280: subcommands.GitMaintenanceArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 281: subcommands.GitMaintenanceArguments.auto:type_name -> subcommands.OptBool
+	78,  // 282: subcommands.GitMaintenanceArguments.force:type_name -> subcommands.OptBool
+	4,   // 283: subcommands.GitMergeArguments.control:type_name -> subcommands.GitMergeArguments.Control
+	92,  // 284: subcommands.GitMergeArguments.fast_forward:type_name -> subcommands.FastForward
+	78,  // 285: subcommands.GitMergeArguments.squash:type_name -> subcommands.OptBool
+	78,  // 286: subcommands.GitMergeArguments.commit:type_name -> subcommands.OptBool
+	78,  // 287: subcommands.GitMergeArguments.edit:type_name -> subcommands.OptBool
+	78,  // 288: subcommands.GitMergeArguments.verify_signatures:type_name -> subcommands.OptBool
+	78,  // 289: subcommands.GitMergeArguments.signoff:type_name -> subcommands.OptBool
+	78,  // 290: subcommands.GitMergeArguments.stat:type_name -> subcommands.OptBool
+	78,  // 291: subcommands.GitMergeArguments.progress:type_name -> subcommands.OptBool
+	84,  // 292: subcommands.GitMergeArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 293: subcommands.GitMergeArguments.autostash:type_name -> subcommands.OptBool
+	78,  // 294: subcommands.GitMergeArguments.allow_unrelated_histories:type_name -> subcommands.OptBool
+	78,  // 295: subcommands.GitMergeArguments.rerere_autoupdate:type_name -> subcommands.OptBool
+	78,  // 296: subcommands.GitMergeArguments.overwrite_ignore:type_name -> subcommands.OptBool
+	86,  // 297: subcommands.GitMergeArguments.message:type_name -> subcommands.MessageSource
+	78,  // 298: subcommands.GitMergeArguments.log_flag:type_name -> subcommands.OptBool
+	78,  // 299: subcommands.GitMergeArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 300: subcommands.GitMergeArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 301: subcommands.GitMvArguments.force:type_name -> subcommands.OptBool
+	78,  // 302: subcommands.GitMvArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 303: subcommands.GitMvArguments.skip_errors:type_name -> subcommands.OptBool
+	78,  // 304: subcommands.GitMvArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 305: subcommands.GitMvArguments.sparse:type_name -> subcommands.OptBool
+	5,   // 306: subcommands.GitNotesArguments.verb:type_name -> subcommands.GitNotesArguments.Verb
+	78,  // 307: subcommands.GitNotesArguments.force:type_name -> subcommands.OptBool
+	86,  // 308: subcommands.GitNotesArguments.message:type_name -> subcommands.MessageSource
+	78,  // 309: subcommands.GitNotesArguments.allow_empty:type_name -> subcommands.OptBool
+	78,  // 310: subcommands.GitNotesArguments.stripspace:type_name -> subcommands.OptBool
+	78,  // 311: subcommands.GitNotesArguments.ignore_missing:type_name -> subcommands.OptBool
+	78,  // 312: subcommands.GitPushArguments.all:type_name -> subcommands.OptBool
+	78,  // 313: subcommands.GitPushArguments.prune:type_name -> subcommands.OptBool
+	78,  // 314: subcommands.GitPushArguments.mirror:type_name -> subcommands.OptBool
+	78,  // 315: subcommands.GitPushArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 316: subcommands.GitPushArguments.porcelain:type_name -> subcommands.OptBool
+	78,  // 317: subcommands.GitPushArguments.delete:type_name -> subcommands.OptBool
+	78,  // 318: subcommands.GitPushArguments.tags:type_name -> subcommands.OptBool
+	78,  // 319: subcommands.GitPushArguments.follow_tags:type_name -> subcommands.OptBool
+	78,  // 320: subcommands.GitPushArguments.force:type_name -> subcommands.OptBool
+	78,  // 321: subcommands.GitPushArguments.force_with_lease_flag:type_name -> subcommands.OptBool
+	83,  // 322: subcommands.GitPushArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 323: subcommands.GitPushArguments.thin:type_name -> subcommands.OptBool
+	78,  // 324: subcommands.GitPushArguments.atomic:type_name -> subcommands.OptBool
+	78,  // 325: subcommands.GitPushArguments.signed:type_name -> subcommands.OptBool
+	78,  // 326: subcommands.GitPushArguments.verify:type_name -> subcommands.OptBool
+	78,  // 327: subcommands.GitPushArguments.set_upstream:type_name -> subcommands.OptBool
+	78,  // 328: subcommands.GitPushArguments.progress:type_name -> subcommands.OptBool
+	78,  // 329: subcommands.GitPushArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 330: subcommands.GitPushArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 331: subcommands.GitPushArguments.ipv4:type_name -> subcommands.OptBool
+	78,  // 332: subcommands.GitPushArguments.ipv6:type_name -> subcommands.OptBool
+	78,  // 333: subcommands.GitRangeDiffArguments.creation_factor:type_name -> subcommands.OptBool
+	78,  // 334: subcommands.GitRangeDiffArguments.no_dual_color:type_name -> subcommands.OptBool
+	78,  // 335: subcommands.GitRangeDiffArguments.notes_flag:type_name -> subcommands.OptBool
+	78,  // 336: subcommands.GitRangeDiffArguments.left_only:type_name -> subcommands.OptBool
+	78,  // 337: subcommands.GitRangeDiffArguments.right_only:type_name -> subcommands.OptBool
+	80,  // 338: subcommands.GitRangeDiffArguments.pathspec:type_name -> subcommands.Pathspec
+	6,   // 339: subcommands.GitRebaseArguments.control:type_name -> subcommands.GitRebaseArguments.Control
+	78,  // 340: subcommands.GitRebaseArguments.interactive:type_name -> subcommands.OptBool
+	78,  // 341: subcommands.GitRebaseArguments.root:type_name -> subcommands.OptBool
+	78,  // 342: subcommands.GitRebaseArguments.preserve_merges:type_name -> subcommands.OptBool
+	78,  // 343: subcommands.GitRebaseArguments.rebase_merges:type_name -> subcommands.OptBool
+	78,  // 344: subcommands.GitRebaseArguments.autosquash:type_name -> subcommands.OptBool
+	78,  // 345: subcommands.GitRebaseArguments.autostash:type_name -> subcommands.OptBool
+	78,  // 346: subcommands.GitRebaseArguments.fork_point:type_name -> subcommands.OptBool
+	92,  // 347: subcommands.GitRebaseArguments.fast_forward:type_name -> subcommands.FastForward
+	78,  // 348: subcommands.GitRebaseArguments.keep_empty:type_name -> subcommands.OptBool
+	78,  // 349: subcommands.GitRebaseArguments.empty:type_name -> subcommands.OptBool
+	78,  // 350: subcommands.GitRebaseArguments.no_verify:type_name -> subcommands.OptBool
+	78,  // 351: subcommands.GitRebaseArguments.verify:type_name -> subcommands.OptBool
+	78,  // 352: subcommands.GitRebaseArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 353: subcommands.GitRebaseArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 354: subcommands.GitRebaseArguments.stat:type_name -> subcommands.OptBool
+	84,  // 355: subcommands.GitRebaseArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 356: subcommands.GitRebaseArguments.signoff:type_name -> subcommands.OptBool
+	78,  // 357: subcommands.GitRebaseArguments.exec:type_name -> subcommands.OptBool
+	78,  // 358: subcommands.GitRebaseArguments.reschedule_failed_exec:type_name -> subcommands.OptBool
+	78,  // 359: subcommands.GitRebaseArguments.update_refs:type_name -> subcommands.OptBool
+	7,   // 360: subcommands.GitResetArguments.mode:type_name -> subcommands.GitResetArguments.Mode
+	78,  // 361: subcommands.GitResetArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 362: subcommands.GitResetArguments.no_refresh:type_name -> subcommands.OptBool
+	78,  // 363: subcommands.GitResetArguments.patch:type_name -> subcommands.OptBool
+	80,  // 364: subcommands.GitResetArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 365: subcommands.GitRestoreArguments.patch:type_name -> subcommands.OptBool
+	78,  // 366: subcommands.GitRestoreArguments.worktree:type_name -> subcommands.OptBool
+	78,  // 367: subcommands.GitRestoreArguments.staged:type_name -> subcommands.OptBool
+	78,  // 368: subcommands.GitRestoreArguments.ours:type_name -> subcommands.OptBool
+	78,  // 369: subcommands.GitRestoreArguments.theirs:type_name -> subcommands.OptBool
+	78,  // 370: subcommands.GitRestoreArguments.merge:type_name -> subcommands.OptBool
+	78,  // 371: subcommands.GitRestoreArguments.ignore_unmerged:type_name -> subcommands.OptBool
+	78,  // 372: subcommands.GitRestoreArguments.ignore_skip_worktree_bits:type_name -> subcommands.OptBool
+	83,  // 373: subcommands.GitRestoreArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 374: subcommands.GitRestoreArguments.overlay:type_name -> subcommands.OptBool
+	78,  // 375: subcommands.GitRestoreArguments.progress:type_name -> subcommands.OptBool
+	78,  // 376: subcommands.GitRestoreArguments.quiet:type_name -> subcommands.OptBool
+	80,  // 377: subcommands.GitRestoreArguments.pathspec:type_name -> subcommands.Pathspec
+	8,   // 378: subcommands.GitRevertArguments.control:type_name -> subcommands.GitRevertArguments.Control
+	78,  // 379: subcommands.GitRevertArguments.edit:type_name -> subcommands.OptBool
+	78,  // 380: subcommands.GitRevertArguments.no_edit:type_name -> subcommands.OptBool
+	78,  // 381: subcommands.GitRevertArguments.no_commit:type_name -> subcommands.OptBool
+	84,  // 382: subcommands.GitRevertArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 383: subcommands.GitRevertArguments.signoff:type_name -> subcommands.OptBool
+	78,  // 384: subcommands.GitRevertArguments.rerere_autoupdate:type_name -> subcommands.OptBool
+	78,  // 385: subcommands.GitRevertArguments.reference:type_name -> subcommands.OptBool
+	78,  // 386: subcommands.GitRmArguments.force:type_name -> subcommands.OptBool
+	78,  // 387: subcommands.GitRmArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 388: subcommands.GitRmArguments.recursive:type_name -> subcommands.OptBool
+	78,  // 389: subcommands.GitRmArguments.cached:type_name -> subcommands.OptBool
+	78,  // 390: subcommands.GitRmArguments.ignore_unmatch:type_name -> subcommands.OptBool
+	78,  // 391: subcommands.GitRmArguments.sparse:type_name -> subcommands.OptBool
+	78,  // 392: subcommands.GitRmArguments.quiet:type_name -> subcommands.OptBool
+	80,  // 393: subcommands.GitRmArguments.pathspec:type_name -> subcommands.Pathspec
+	78,  // 394: subcommands.GitShortlogArguments.numbered:type_name -> subcommands.OptBool
+	78,  // 395: subcommands.GitShortlogArguments.summary:type_name -> subcommands.OptBool
+	78,  // 396: subcommands.GitShortlogArguments.email:type_name -> subcommands.OptBool
+	78,  // 397: subcommands.GitShortlogArguments.committer:type_name -> subcommands.OptBool
+	80,  // 398: subcommands.GitShortlogArguments.pathspec:type_name -> subcommands.Pathspec
+	89,  // 399: subcommands.GitShowArguments.formatting:type_name -> subcommands.DiffFormatting
+	78,  // 400: subcommands.GitShowArguments.pretty_flag:type_name -> subcommands.OptBool
+	78,  // 401: subcommands.GitShowArguments.abbrev_commit:type_name -> subcommands.OptBool
+	78,  // 402: subcommands.GitShowArguments.no_abbrev_commit:type_name -> subcommands.OptBool
+	78,  // 403: subcommands.GitShowArguments.oneline:type_name -> subcommands.OptBool
+	78,  // 404: subcommands.GitShowArguments.expand_tabs:type_name -> subcommands.OptBool
+	90,  // 405: subcommands.GitShowArguments.expand_tabs_width:type_name -> subcommands.OptInt
+	78,  // 406: subcommands.GitShowArguments.no_expand_tabs:type_name -> subcommands.OptBool
+	78,  // 407: subcommands.GitShowArguments.notes:type_name -> subcommands.OptBool
+	78,  // 408: subcommands.GitShowArguments.no_notes:type_name -> subcommands.OptBool
+	78,  // 409: subcommands.GitShowArguments.show_notes:type_name -> subcommands.OptBool
+	78,  // 410: subcommands.GitShowArguments.standard_notes:type_name -> subcommands.OptBool
+	78,  // 411: subcommands.GitShowArguments.show_signature:type_name -> subcommands.OptBool
+	78,  // 412: subcommands.GitShowArguments.no_diff_merges:type_name -> subcommands.OptBool
+	78,  // 413: subcommands.GitShowArguments.combined_all_paths:type_name -> subcommands.OptBool
+	78,  // 414: subcommands.GitShowArguments.dash_t:type_name -> subcommands.OptBool
+	9,   // 415: subcommands.GitSparseCheckoutArguments.verb:type_name -> subcommands.GitSparseCheckoutArguments.Verb
+	78,  // 416: subcommands.GitSparseCheckoutArguments.cone:type_name -> subcommands.OptBool
+	78,  // 417: subcommands.GitSparseCheckoutArguments.sparse_index:type_name -> subcommands.OptBool
+	78,  // 418: subcommands.GitSparseCheckoutArguments.stdin_input:type_name -> subcommands.OptBool
+	78,  // 419: subcommands.GitSparseCheckoutArguments.skip_checks:type_name -> subcommands.OptBool
+	59,  // 420: subcommands.GitStashArguments.push:type_name -> subcommands.StashPush
+	60,  // 421: subcommands.GitStashArguments.list:type_name -> subcommands.StashList
+	61,  // 422: subcommands.GitStashArguments.show:type_name -> subcommands.StashShow
+	62,  // 423: subcommands.GitStashArguments.drop:type_name -> subcommands.StashDrop
+	63,  // 424: subcommands.GitStashArguments.pop:type_name -> subcommands.StashPop
+	64,  // 425: subcommands.GitStashArguments.apply:type_name -> subcommands.StashApply
+	65,  // 426: subcommands.GitStashArguments.branch:type_name -> subcommands.StashBranch
+	66,  // 427: subcommands.GitStashArguments.clear:type_name -> subcommands.StashClear
+	67,  // 428: subcommands.GitStashArguments.create:type_name -> subcommands.StashCreate
+	68,  // 429: subcommands.GitStashArguments.store:type_name -> subcommands.StashStore
+	78,  // 430: subcommands.StashPush.patch:type_name -> subcommands.OptBool
+	78,  // 431: subcommands.StashPush.keep_index:type_name -> subcommands.OptBool
+	78,  // 432: subcommands.StashPush.staged:type_name -> subcommands.OptBool
+	78,  // 433: subcommands.StashPush.include_untracked:type_name -> subcommands.OptBool
+	78,  // 434: subcommands.StashPush.all:type_name -> subcommands.OptBool
+	78,  // 435: subcommands.StashPush.quiet:type_name -> subcommands.OptBool
+	80,  // 436: subcommands.StashPush.pathspec:type_name -> subcommands.Pathspec
+	78,  // 437: subcommands.StashShow.include_untracked:type_name -> subcommands.OptBool
+	78,  // 438: subcommands.StashShow.only_untracked:type_name -> subcommands.OptBool
+	78,  // 439: subcommands.StashShow.patch:type_name -> subcommands.OptBool
+	78,  // 440: subcommands.StashShow.stat:type_name -> subcommands.OptBool
+	78,  // 441: subcommands.StashDrop.quiet:type_name -> subcommands.OptBool
+	78,  // 442: subcommands.StashPop.index:type_name -> subcommands.OptBool
+	78,  // 443: subcommands.StashPop.quiet:type_name -> subcommands.OptBool
+	78,  // 444: subcommands.StashApply.index:type_name -> subcommands.OptBool
+	78,  // 445: subcommands.StashApply.quiet:type_name -> subcommands.OptBool
+	78,  // 446: subcommands.StashStore.quiet:type_name -> subcommands.OptBool
+	88,  // 447: subcommands.GitStatusArguments.format:type_name -> subcommands.StatusFormat
+	78,  // 448: subcommands.GitStatusArguments.branch:type_name -> subcommands.OptBool
+	78,  // 449: subcommands.GitStatusArguments.show_stash:type_name -> subcommands.OptBool
+	78,  // 450: subcommands.GitStatusArguments.ahead_behind:type_name -> subcommands.OptBool
+	87,  // 451: subcommands.GitStatusArguments.untracked_files:type_name -> subcommands.UntrackedFilesMode
+	93,  // 452: subcommands.GitStatusArguments.ignored:type_name -> subcommands.IgnoredMode
+	78,  // 453: subcommands.GitStatusArguments.no_ignored_pathspec_for_dirs:type_name -> subcommands.OptBool
+	78,  // 454: subcommands.GitStatusArguments.z:type_name -> subcommands.OptBool
+	78,  // 455: subcommands.GitStatusArguments.no_column:type_name -> subcommands.OptBool
+	83,  // 456: subcommands.GitStatusArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 457: subcommands.GitStatusArguments.verbose:type_name -> subcommands.OptBool
+	80,  // 458: subcommands.GitStatusArguments.pathspec:type_name -> subcommands.Pathspec
+	10,  // 459: subcommands.GitSubmoduleArguments.verb:type_name -> subcommands.GitSubmoduleArguments.Verb
+	78,  // 460: subcommands.GitSubmoduleArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 461: subcommands.GitSubmoduleArguments.cached:type_name -> subcommands.OptBool
+	78,  // 462: subcommands.GitSubmoduleArguments.recursive:type_name -> subcommands.OptBool
+	78,  // 463: subcommands.GitSubmoduleArguments.force:type_name -> subcommands.OptBool
+	78,  // 464: subcommands.GitSubmoduleArguments.init:type_name -> subcommands.OptBool
+	78,  // 465: subcommands.GitSubmoduleArguments.remote:type_name -> subcommands.OptBool
+	78,  // 466: subcommands.GitSubmoduleArguments.merge:type_name -> subcommands.OptBool
+	78,  // 467: subcommands.GitSubmoduleArguments.rebase:type_name -> subcommands.OptBool
+	78,  // 468: subcommands.GitSubmoduleArguments.checkout:type_name -> subcommands.OptBool
+	78,  // 469: subcommands.GitSubmoduleArguments.no_fetch:type_name -> subcommands.OptBool
+	78,  // 470: subcommands.GitSubmoduleArguments.progress:type_name -> subcommands.OptBool
+	78,  // 471: subcommands.GitSwitchArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 472: subcommands.GitSwitchArguments.progress:type_name -> subcommands.OptBool
+	78,  // 473: subcommands.GitSwitchArguments.detach:type_name -> subcommands.OptBool
+	81,  // 474: subcommands.GitSwitchArguments.track:type_name -> subcommands.BranchTrackMode
+	78,  // 475: subcommands.GitSwitchArguments.guess:type_name -> subcommands.OptBool
+	78,  // 476: subcommands.GitSwitchArguments.discard_changes:type_name -> subcommands.OptBool
+	78,  // 477: subcommands.GitSwitchArguments.merge:type_name -> subcommands.OptBool
+	78,  // 478: subcommands.GitSwitchArguments.ignore_other_worktrees:type_name -> subcommands.OptBool
+	83,  // 479: subcommands.GitSwitchArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	11,  // 480: subcommands.GitTagArguments.action:type_name -> subcommands.GitTagArguments.Action
+	78,  // 481: subcommands.GitTagArguments.annotate:type_name -> subcommands.OptBool
+	78,  // 482: subcommands.GitTagArguments.sign:type_name -> subcommands.OptBool
+	84,  // 483: subcommands.GitTagArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 484: subcommands.GitTagArguments.force:type_name -> subcommands.OptBool
+	86,  // 485: subcommands.GitTagArguments.message:type_name -> subcommands.MessageSource
+	78,  // 486: subcommands.GitTagArguments.cleanup:type_name -> subcommands.OptBool
+	78,  // 487: subcommands.GitTagArguments.edit:type_name -> subcommands.OptBool
+	82,  // 488: subcommands.GitTagArguments.color:type_name -> subcommands.ColorWhen
+	78,  // 489: subcommands.GitTagArguments.ignore_case:type_name -> subcommands.OptBool
+	12,  // 490: subcommands.GitWorktreeArguments.verb:type_name -> subcommands.GitWorktreeArguments.Verb
+	78,  // 491: subcommands.GitWorktreeArguments.force:type_name -> subcommands.OptBool
+	78,  // 492: subcommands.GitWorktreeArguments.detach:type_name -> subcommands.OptBool
+	78,  // 493: subcommands.GitWorktreeArguments.checkout:type_name -> subcommands.OptBool
+	78,  // 494: subcommands.GitWorktreeArguments.lock:type_name -> subcommands.OptBool
+	78,  // 495: subcommands.GitWorktreeArguments.track:type_name -> subcommands.OptBool
+	78,  // 496: subcommands.GitWorktreeArguments.porcelain:type_name -> subcommands.OptBool
+	78,  // 497: subcommands.GitWorktreeArguments.z:type_name -> subcommands.OptBool
+	78,  // 498: subcommands.GitWorktreeArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 499: subcommands.GitWorktreeArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 500: subcommands.GitWorktreeArguments.relative_paths:type_name -> subcommands.OptBool
+	78,  // 501: subcommands.GitCloneArguments.bare:type_name -> subcommands.OptBool
+	78,  // 502: subcommands.GitCloneArguments.mirror:type_name -> subcommands.OptBool
+	78,  // 503: subcommands.GitCloneArguments.dissociate:type_name -> subcommands.OptBool
+	78,  // 504: subcommands.GitCloneArguments.single_branch:type_name -> subcommands.OptBool
+	78,  // 505: subcommands.GitCloneArguments.no_tags:type_name -> subcommands.OptBool
+	83,  // 506: subcommands.GitCloneArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 507: subcommands.GitCloneArguments.shallow_submodules:type_name -> subcommands.OptBool
+	78,  // 508: subcommands.GitCloneArguments.remote_submodules:type_name -> subcommands.OptBool
+	78,  // 509: subcommands.GitCloneArguments.progress:type_name -> subcommands.OptBool
+	78,  // 510: subcommands.GitCloneArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 511: subcommands.GitCloneArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 512: subcommands.GitCloneArguments.sparse:type_name -> subcommands.OptBool
+	78,  // 513: subcommands.GitFetchArguments.all:type_name -> subcommands.OptBool
+	78,  // 514: subcommands.GitFetchArguments.append:type_name -> subcommands.OptBool
+	78,  // 515: subcommands.GitFetchArguments.atomic:type_name -> subcommands.OptBool
+	78,  // 516: subcommands.GitFetchArguments.unshallow:type_name -> subcommands.OptBool
+	78,  // 517: subcommands.GitFetchArguments.update_shallow:type_name -> subcommands.OptBool
+	78,  // 518: subcommands.GitFetchArguments.prune:type_name -> subcommands.OptBool
+	78,  // 519: subcommands.GitFetchArguments.prune_tags:type_name -> subcommands.OptBool
+	78,  // 520: subcommands.GitFetchArguments.tags:type_name -> subcommands.OptBool
+	78,  // 521: subcommands.GitFetchArguments.no_tags:type_name -> subcommands.OptBool
+	78,  // 522: subcommands.GitFetchArguments.refetch:type_name -> subcommands.OptBool
+	78,  // 523: subcommands.GitFetchArguments.force:type_name -> subcommands.OptBool
+	78,  // 524: subcommands.GitFetchArguments.keep:type_name -> subcommands.OptBool
+	78,  // 525: subcommands.GitFetchArguments.multiple:type_name -> subcommands.OptBool
+	83,  // 526: subcommands.GitFetchArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 527: subcommands.GitFetchArguments.set_upstream:type_name -> subcommands.OptBool
+	78,  // 528: subcommands.GitFetchArguments.dry_run:type_name -> subcommands.OptBool
+	78,  // 529: subcommands.GitFetchArguments.write_fetch_head:type_name -> subcommands.OptBool
+	78,  // 530: subcommands.GitFetchArguments.no_write_fetch_head:type_name -> subcommands.OptBool
+	78,  // 531: subcommands.GitFetchArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 532: subcommands.GitFetchArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 533: subcommands.GitFetchArguments.progress:type_name -> subcommands.OptBool
+	78,  // 534: subcommands.GitFetchArguments.ipv4:type_name -> subcommands.OptBool
+	78,  // 535: subcommands.GitFetchArguments.ipv6:type_name -> subcommands.OptBool
+	92,  // 536: subcommands.GitPullArguments.fast_forward:type_name -> subcommands.FastForward
+	78,  // 537: subcommands.GitPullArguments.no_rebase:type_name -> subcommands.OptBool
+	78,  // 538: subcommands.GitPullArguments.unshallow:type_name -> subcommands.OptBool
+	78,  // 539: subcommands.GitPullArguments.commit:type_name -> subcommands.OptBool
+	78,  // 540: subcommands.GitPullArguments.edit:type_name -> subcommands.OptBool
+	78,  // 541: subcommands.GitPullArguments.stat:type_name -> subcommands.OptBool
+	78,  // 542: subcommands.GitPullArguments.squash:type_name -> subcommands.OptBool
+	78,  // 543: subcommands.GitPullArguments.verify_signatures:type_name -> subcommands.OptBool
+	78,  // 544: subcommands.GitPullArguments.signoff:type_name -> subcommands.OptBool
+	84,  // 545: subcommands.GitPullArguments.gpg_sign:type_name -> subcommands.GpgSign
+	78,  // 546: subcommands.GitPullArguments.autostash:type_name -> subcommands.OptBool
+	78,  // 547: subcommands.GitPullArguments.allow_unrelated_histories:type_name -> subcommands.OptBool
+	78,  // 548: subcommands.GitPullArguments.all:type_name -> subcommands.OptBool
+	78,  // 549: subcommands.GitPullArguments.append:type_name -> subcommands.OptBool
+	78,  // 550: subcommands.GitPullArguments.prune:type_name -> subcommands.OptBool
+	78,  // 551: subcommands.GitPullArguments.tags:type_name -> subcommands.OptBool
+	78,  // 552: subcommands.GitPullArguments.no_tags:type_name -> subcommands.OptBool
+	83,  // 553: subcommands.GitPullArguments.recurse_submodules:type_name -> subcommands.RecurseSubmodules
+	78,  // 554: subcommands.GitPullArguments.force:type_name -> subcommands.OptBool
+	78,  // 555: subcommands.GitPullArguments.keep:type_name -> subcommands.OptBool
+	78,  // 556: subcommands.GitPullArguments.ipv4:type_name -> subcommands.OptBool
+	78,  // 557: subcommands.GitPullArguments.ipv6:type_name -> subcommands.OptBool
+	78,  // 558: subcommands.GitPullArguments.quiet:type_name -> subcommands.OptBool
+	78,  // 559: subcommands.GitPullArguments.verbose:type_name -> subcommands.OptBool
+	78,  // 560: subcommands.GitPullArguments.progress:type_name -> subcommands.OptBool
+	561, // [561:561] is the sub-list for method output_type
+	561, // [561:561] is the sub-list for method input_type
+	561, // [561:561] is the sub-list for extension type_name
+	561, // [561:561] is the sub-list for extension extendee
+	0,   // [0:561] is the sub-list for field type_name
 }
 
 func init() { file_subcommand_proto_init() }
@@ -11120,6 +12193,9 @@ func file_subcommand_proto_init() {
 		(*Subcommand_Switch)(nil),
 		(*Subcommand_Tag)(nil),
 		(*Subcommand_Worktree)(nil),
+		(*Subcommand_Clone)(nil),
+		(*Subcommand_Fetch)(nil),
+		(*Subcommand_Pull)(nil),
 	}
 	file_subcommand_proto_msgTypes[4].OneofWrappers = []any{
 		(*GitBisectArguments_Start)(nil),
@@ -11159,7 +12235,7 @@ func file_subcommand_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_subcommand_proto_rawDesc), len(file_subcommand_proto_rawDesc)),
 			NumEnums:      13,
-			NumMessages:   61,
+			NumMessages:   64,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

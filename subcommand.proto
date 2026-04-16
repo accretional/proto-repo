@@ -54,6 +54,9 @@ message Subcommand {
     TYPE_SWITCH = 33;
     TYPE_TAG = 34;
     TYPE_WORKTREE = 35;
+    TYPE_CLONE = 36;
+    TYPE_FETCH = 37;
+    TYPE_PULL = 38;
   }
 
   repo.Repo repo = 1;
@@ -95,6 +98,9 @@ message Subcommand {
     GitSwitchArguments switch = 42;
     GitTagArguments tag = 43;
     GitWorktreeArguments worktree = 44;
+    GitCloneArguments clone = 45;
+    GitFetchArguments fetch = 46;
+    GitPullArguments pull = 47;
   }
 }
 
@@ -1183,4 +1189,110 @@ message GitWorktreeArguments {
   string new_path = 18;          // move destination
   string commit_ish = 19;        // add <commit-ish>
   repeated string paths = 20;    // repair accepts multiple
+}
+
+// ---- git clone ------------------------------------------------------------
+// The URL and destination come from resolving the request's Repo — callers
+// don't set them here. Only the behavior flags live on this message.
+message GitCloneArguments {
+  OptBool bare = 1;                   // --bare
+  OptBool mirror = 2;                 // --mirror
+  string origin = 3;                  // -o / --origin=<name>
+  string branch = 4;                  // -b / --branch=<name>
+  string upload_pack = 5;             // -u / --upload-pack=<path>
+  string template = 6;                // --template=<dir>
+  string reference = 7;               // --reference=<repo>
+  OptBool dissociate = 8;             // --dissociate (with --reference)
+  int32 depth = 9;                    // --depth=<n> (0 = unset)
+  string shallow_since = 10;          // --shallow-since=<date>
+  repeated string shallow_exclude = 11;
+  OptBool single_branch = 12;         // --[no-]single-branch
+  OptBool no_tags = 13;               // --no-tags
+  RecurseSubmodules recurse_submodules = 14;
+  OptBool shallow_submodules = 15;
+  OptBool remote_submodules = 16;
+  string separate_git_dir = 17;       // --separate-git-dir=<dir>
+  int32 jobs = 18;                    // -j <n>
+  string filter = 19;                 // --filter=<spec>
+  OptBool progress = 20;
+  OptBool quiet = 21;
+  OptBool verbose = 22;
+  OptBool sparse = 23;                // --sparse
+}
+
+// ---- git fetch ------------------------------------------------------------
+message GitFetchArguments {
+  OptBool all = 1;                    // --all
+  OptBool append = 2;                 // --append / -a
+  OptBool atomic = 3;                 // --atomic
+  int32 depth = 4;                    // --depth=<n>
+  int32 deepen = 5;                   // --deepen=<n>
+  string shallow_since = 6;
+  repeated string shallow_exclude = 7;
+  OptBool unshallow = 8;
+  OptBool update_shallow = 9;
+  OptBool prune = 10;                 // --prune / -p
+  OptBool prune_tags = 11;            // --prune-tags / -P
+  OptBool tags = 12;                  // --tags
+  OptBool no_tags = 13;               // --no-tags
+  OptBool refetch = 14;               // --refetch
+  OptBool force = 15;                 // --force / -f
+  OptBool keep = 16;                  // --keep / -k
+  OptBool multiple = 17;              // --multiple
+  RecurseSubmodules recurse_submodules = 18;
+  OptBool set_upstream = 19;          // --set-upstream
+  int32 jobs = 20;                    // -j <n>
+  OptBool dry_run = 21;
+  OptBool write_fetch_head = 22;      // --[no-]write-fetch-head
+  OptBool no_write_fetch_head = 23;
+  OptBool quiet = 24;
+  OptBool verbose = 25;
+  OptBool progress = 26;
+  OptBool ipv4 = 27;
+  OptBool ipv6 = 28;
+  string upload_pack = 29;            // --upload-pack=<path>
+  string server_option = 30;          // -o / --server-option=<opt>
+  string repository = 31;             // <remote> positional
+  repeated string refspecs = 32;
+}
+
+// ---- git pull -------------------------------------------------------------
+message GitPullArguments {
+  FastForward fast_forward = 1;       // --ff / --no-ff / --ff-only
+  // --[no-]rebase; --rebase=false|true|merges|interactive expressed as a
+  // string to carry the 4-value variant without adding a new enum.
+  string rebase_mode = 2;
+  OptBool no_rebase = 3;
+  int32 depth = 4;
+  OptBool unshallow = 5;
+  string shallow_since = 6;
+  repeated string shallow_exclude = 7;
+  OptBool commit = 8;                 // --[no-]commit
+  OptBool edit = 9;                   // --[no-]edit
+  OptBool stat = 10;                  // --[no-]stat
+  OptBool squash = 11;                // --[no-]squash
+  OptBool verify_signatures = 12;
+  OptBool signoff = 13;               // --signoff
+  GpgSign gpg_sign = 14;
+  OptBool autostash = 15;             // --[no-]autostash
+  OptBool allow_unrelated_histories = 16;
+  repeated string strategy = 17;      // -s <strategy>
+  repeated string strategy_option = 18;
+  OptBool all = 19;                   // --all
+  OptBool append = 20;
+  OptBool prune = 21;
+  OptBool tags = 22;                  // --tags
+  OptBool no_tags = 23;
+  RecurseSubmodules recurse_submodules = 24;
+  int32 jobs = 25;                    // -j <n>
+  OptBool force = 26;
+  OptBool keep = 27;
+  OptBool ipv4 = 28;
+  OptBool ipv6 = 29;
+  OptBool quiet = 30;
+  OptBool verbose = 31;
+  OptBool progress = 32;
+  string upload_pack = 33;
+  string repository = 34;             // <remote>
+  repeated string refspecs = 35;
 }

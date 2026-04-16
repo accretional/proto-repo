@@ -86,7 +86,7 @@ const file_subcommands_proto_rawDesc = "" +
 	"\rSubCommandReq\x12\x1e\n" +
 	"\x04repo\x18\x01 \x01(\v2\n" +
 	".repo.RepoR\x04repo\x12\x12\n" +
-	"\x04args\x18\x02 \x03(\tR\x04args2\x80\x0f\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args2\x9b\x10\n" +
 	"\vSubCommands\x121\n" +
 	"\aExecute\x12\x17.subcommands.Subcommand\x1a\r.repo.RepoMsg\x120\n" +
 	"\x03Add\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x124\n" +
@@ -98,10 +98,12 @@ const file_subcommands_proto_rawDesc = "" +
 	"\bCheckout\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x127\n" +
 	"\n" +
 	"CherryPick\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x122\n" +
-	"\x05Clean\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x123\n" +
+	"\x05Clean\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x122\n" +
+	"\x05Clone\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x123\n" +
 	"\x06Commit\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x125\n" +
 	"\bDescribe\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x121\n" +
-	"\x04Diff\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x12/\n" +
+	"\x04Diff\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x122\n" +
+	"\x05Fetch\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x12/\n" +
 	"\x02Gc\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x121\n" +
 	"\x04Init\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x120\n" +
 	"\x03Log\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x128\n" +
@@ -109,6 +111,7 @@ const file_subcommands_proto_rawDesc = "" +
 	"\x05Merge\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x12/\n" +
 	"\x02Mv\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x122\n" +
 	"\x05Notes\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x121\n" +
+	"\x04Pull\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x121\n" +
 	"\x04Push\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x126\n" +
 	"\tRangeDiff\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x123\n" +
 	"\x06Rebase\x12\x1a.subcommands.SubCommandReq\x1a\r.repo.RepoMsg\x122\n" +
@@ -157,70 +160,76 @@ var file_subcommands_proto_depIdxs = []int32{
 	0,  // 8: subcommands.SubCommands.Checkout:input_type -> subcommands.SubCommandReq
 	0,  // 9: subcommands.SubCommands.CherryPick:input_type -> subcommands.SubCommandReq
 	0,  // 10: subcommands.SubCommands.Clean:input_type -> subcommands.SubCommandReq
-	0,  // 11: subcommands.SubCommands.Commit:input_type -> subcommands.SubCommandReq
-	0,  // 12: subcommands.SubCommands.Describe:input_type -> subcommands.SubCommandReq
-	0,  // 13: subcommands.SubCommands.Diff:input_type -> subcommands.SubCommandReq
-	0,  // 14: subcommands.SubCommands.Gc:input_type -> subcommands.SubCommandReq
-	0,  // 15: subcommands.SubCommands.Init:input_type -> subcommands.SubCommandReq
-	0,  // 16: subcommands.SubCommands.Log:input_type -> subcommands.SubCommandReq
-	0,  // 17: subcommands.SubCommands.Maintenance:input_type -> subcommands.SubCommandReq
-	0,  // 18: subcommands.SubCommands.Merge:input_type -> subcommands.SubCommandReq
-	0,  // 19: subcommands.SubCommands.Mv:input_type -> subcommands.SubCommandReq
-	0,  // 20: subcommands.SubCommands.Notes:input_type -> subcommands.SubCommandReq
-	0,  // 21: subcommands.SubCommands.Push:input_type -> subcommands.SubCommandReq
-	0,  // 22: subcommands.SubCommands.RangeDiff:input_type -> subcommands.SubCommandReq
-	0,  // 23: subcommands.SubCommands.Rebase:input_type -> subcommands.SubCommandReq
-	0,  // 24: subcommands.SubCommands.Reset:input_type -> subcommands.SubCommandReq
-	0,  // 25: subcommands.SubCommands.Restore:input_type -> subcommands.SubCommandReq
-	0,  // 26: subcommands.SubCommands.Revert:input_type -> subcommands.SubCommandReq
-	0,  // 27: subcommands.SubCommands.Rm:input_type -> subcommands.SubCommandReq
-	0,  // 28: subcommands.SubCommands.Shortlog:input_type -> subcommands.SubCommandReq
-	0,  // 29: subcommands.SubCommands.Show:input_type -> subcommands.SubCommandReq
-	0,  // 30: subcommands.SubCommands.SparseCheckout:input_type -> subcommands.SubCommandReq
-	0,  // 31: subcommands.SubCommands.Stash:input_type -> subcommands.SubCommandReq
-	0,  // 32: subcommands.SubCommands.Status:input_type -> subcommands.SubCommandReq
-	0,  // 33: subcommands.SubCommands.Submodule:input_type -> subcommands.SubCommandReq
-	0,  // 34: subcommands.SubCommands.Switch:input_type -> subcommands.SubCommandReq
-	0,  // 35: subcommands.SubCommands.Tag:input_type -> subcommands.SubCommandReq
-	0,  // 36: subcommands.SubCommands.Worktree:input_type -> subcommands.SubCommandReq
-	3,  // 37: subcommands.SubCommands.Execute:output_type -> repo.RepoMsg
-	3,  // 38: subcommands.SubCommands.Add:output_type -> repo.RepoMsg
-	3,  // 39: subcommands.SubCommands.Archive:output_type -> repo.RepoMsg
-	3,  // 40: subcommands.SubCommands.Backfill:output_type -> repo.RepoMsg
-	3,  // 41: subcommands.SubCommands.Bisect:output_type -> repo.RepoMsg
-	3,  // 42: subcommands.SubCommands.Branch:output_type -> repo.RepoMsg
-	3,  // 43: subcommands.SubCommands.Bundle:output_type -> repo.RepoMsg
-	3,  // 44: subcommands.SubCommands.Checkout:output_type -> repo.RepoMsg
-	3,  // 45: subcommands.SubCommands.CherryPick:output_type -> repo.RepoMsg
-	3,  // 46: subcommands.SubCommands.Clean:output_type -> repo.RepoMsg
-	3,  // 47: subcommands.SubCommands.Commit:output_type -> repo.RepoMsg
-	3,  // 48: subcommands.SubCommands.Describe:output_type -> repo.RepoMsg
-	3,  // 49: subcommands.SubCommands.Diff:output_type -> repo.RepoMsg
-	3,  // 50: subcommands.SubCommands.Gc:output_type -> repo.RepoMsg
-	3,  // 51: subcommands.SubCommands.Init:output_type -> repo.RepoMsg
-	3,  // 52: subcommands.SubCommands.Log:output_type -> repo.RepoMsg
-	3,  // 53: subcommands.SubCommands.Maintenance:output_type -> repo.RepoMsg
-	3,  // 54: subcommands.SubCommands.Merge:output_type -> repo.RepoMsg
-	3,  // 55: subcommands.SubCommands.Mv:output_type -> repo.RepoMsg
-	3,  // 56: subcommands.SubCommands.Notes:output_type -> repo.RepoMsg
-	3,  // 57: subcommands.SubCommands.Push:output_type -> repo.RepoMsg
-	3,  // 58: subcommands.SubCommands.RangeDiff:output_type -> repo.RepoMsg
-	3,  // 59: subcommands.SubCommands.Rebase:output_type -> repo.RepoMsg
-	3,  // 60: subcommands.SubCommands.Reset:output_type -> repo.RepoMsg
-	3,  // 61: subcommands.SubCommands.Restore:output_type -> repo.RepoMsg
-	3,  // 62: subcommands.SubCommands.Revert:output_type -> repo.RepoMsg
-	3,  // 63: subcommands.SubCommands.Rm:output_type -> repo.RepoMsg
-	3,  // 64: subcommands.SubCommands.Shortlog:output_type -> repo.RepoMsg
-	3,  // 65: subcommands.SubCommands.Show:output_type -> repo.RepoMsg
-	3,  // 66: subcommands.SubCommands.SparseCheckout:output_type -> repo.RepoMsg
-	3,  // 67: subcommands.SubCommands.Stash:output_type -> repo.RepoMsg
-	3,  // 68: subcommands.SubCommands.Status:output_type -> repo.RepoMsg
-	3,  // 69: subcommands.SubCommands.Submodule:output_type -> repo.RepoMsg
-	3,  // 70: subcommands.SubCommands.Switch:output_type -> repo.RepoMsg
-	3,  // 71: subcommands.SubCommands.Tag:output_type -> repo.RepoMsg
-	3,  // 72: subcommands.SubCommands.Worktree:output_type -> repo.RepoMsg
-	37, // [37:73] is the sub-list for method output_type
-	1,  // [1:37] is the sub-list for method input_type
+	0,  // 11: subcommands.SubCommands.Clone:input_type -> subcommands.SubCommandReq
+	0,  // 12: subcommands.SubCommands.Commit:input_type -> subcommands.SubCommandReq
+	0,  // 13: subcommands.SubCommands.Describe:input_type -> subcommands.SubCommandReq
+	0,  // 14: subcommands.SubCommands.Diff:input_type -> subcommands.SubCommandReq
+	0,  // 15: subcommands.SubCommands.Fetch:input_type -> subcommands.SubCommandReq
+	0,  // 16: subcommands.SubCommands.Gc:input_type -> subcommands.SubCommandReq
+	0,  // 17: subcommands.SubCommands.Init:input_type -> subcommands.SubCommandReq
+	0,  // 18: subcommands.SubCommands.Log:input_type -> subcommands.SubCommandReq
+	0,  // 19: subcommands.SubCommands.Maintenance:input_type -> subcommands.SubCommandReq
+	0,  // 20: subcommands.SubCommands.Merge:input_type -> subcommands.SubCommandReq
+	0,  // 21: subcommands.SubCommands.Mv:input_type -> subcommands.SubCommandReq
+	0,  // 22: subcommands.SubCommands.Notes:input_type -> subcommands.SubCommandReq
+	0,  // 23: subcommands.SubCommands.Pull:input_type -> subcommands.SubCommandReq
+	0,  // 24: subcommands.SubCommands.Push:input_type -> subcommands.SubCommandReq
+	0,  // 25: subcommands.SubCommands.RangeDiff:input_type -> subcommands.SubCommandReq
+	0,  // 26: subcommands.SubCommands.Rebase:input_type -> subcommands.SubCommandReq
+	0,  // 27: subcommands.SubCommands.Reset:input_type -> subcommands.SubCommandReq
+	0,  // 28: subcommands.SubCommands.Restore:input_type -> subcommands.SubCommandReq
+	0,  // 29: subcommands.SubCommands.Revert:input_type -> subcommands.SubCommandReq
+	0,  // 30: subcommands.SubCommands.Rm:input_type -> subcommands.SubCommandReq
+	0,  // 31: subcommands.SubCommands.Shortlog:input_type -> subcommands.SubCommandReq
+	0,  // 32: subcommands.SubCommands.Show:input_type -> subcommands.SubCommandReq
+	0,  // 33: subcommands.SubCommands.SparseCheckout:input_type -> subcommands.SubCommandReq
+	0,  // 34: subcommands.SubCommands.Stash:input_type -> subcommands.SubCommandReq
+	0,  // 35: subcommands.SubCommands.Status:input_type -> subcommands.SubCommandReq
+	0,  // 36: subcommands.SubCommands.Submodule:input_type -> subcommands.SubCommandReq
+	0,  // 37: subcommands.SubCommands.Switch:input_type -> subcommands.SubCommandReq
+	0,  // 38: subcommands.SubCommands.Tag:input_type -> subcommands.SubCommandReq
+	0,  // 39: subcommands.SubCommands.Worktree:input_type -> subcommands.SubCommandReq
+	3,  // 40: subcommands.SubCommands.Execute:output_type -> repo.RepoMsg
+	3,  // 41: subcommands.SubCommands.Add:output_type -> repo.RepoMsg
+	3,  // 42: subcommands.SubCommands.Archive:output_type -> repo.RepoMsg
+	3,  // 43: subcommands.SubCommands.Backfill:output_type -> repo.RepoMsg
+	3,  // 44: subcommands.SubCommands.Bisect:output_type -> repo.RepoMsg
+	3,  // 45: subcommands.SubCommands.Branch:output_type -> repo.RepoMsg
+	3,  // 46: subcommands.SubCommands.Bundle:output_type -> repo.RepoMsg
+	3,  // 47: subcommands.SubCommands.Checkout:output_type -> repo.RepoMsg
+	3,  // 48: subcommands.SubCommands.CherryPick:output_type -> repo.RepoMsg
+	3,  // 49: subcommands.SubCommands.Clean:output_type -> repo.RepoMsg
+	3,  // 50: subcommands.SubCommands.Clone:output_type -> repo.RepoMsg
+	3,  // 51: subcommands.SubCommands.Commit:output_type -> repo.RepoMsg
+	3,  // 52: subcommands.SubCommands.Describe:output_type -> repo.RepoMsg
+	3,  // 53: subcommands.SubCommands.Diff:output_type -> repo.RepoMsg
+	3,  // 54: subcommands.SubCommands.Fetch:output_type -> repo.RepoMsg
+	3,  // 55: subcommands.SubCommands.Gc:output_type -> repo.RepoMsg
+	3,  // 56: subcommands.SubCommands.Init:output_type -> repo.RepoMsg
+	3,  // 57: subcommands.SubCommands.Log:output_type -> repo.RepoMsg
+	3,  // 58: subcommands.SubCommands.Maintenance:output_type -> repo.RepoMsg
+	3,  // 59: subcommands.SubCommands.Merge:output_type -> repo.RepoMsg
+	3,  // 60: subcommands.SubCommands.Mv:output_type -> repo.RepoMsg
+	3,  // 61: subcommands.SubCommands.Notes:output_type -> repo.RepoMsg
+	3,  // 62: subcommands.SubCommands.Pull:output_type -> repo.RepoMsg
+	3,  // 63: subcommands.SubCommands.Push:output_type -> repo.RepoMsg
+	3,  // 64: subcommands.SubCommands.RangeDiff:output_type -> repo.RepoMsg
+	3,  // 65: subcommands.SubCommands.Rebase:output_type -> repo.RepoMsg
+	3,  // 66: subcommands.SubCommands.Reset:output_type -> repo.RepoMsg
+	3,  // 67: subcommands.SubCommands.Restore:output_type -> repo.RepoMsg
+	3,  // 68: subcommands.SubCommands.Revert:output_type -> repo.RepoMsg
+	3,  // 69: subcommands.SubCommands.Rm:output_type -> repo.RepoMsg
+	3,  // 70: subcommands.SubCommands.Shortlog:output_type -> repo.RepoMsg
+	3,  // 71: subcommands.SubCommands.Show:output_type -> repo.RepoMsg
+	3,  // 72: subcommands.SubCommands.SparseCheckout:output_type -> repo.RepoMsg
+	3,  // 73: subcommands.SubCommands.Stash:output_type -> repo.RepoMsg
+	3,  // 74: subcommands.SubCommands.Status:output_type -> repo.RepoMsg
+	3,  // 75: subcommands.SubCommands.Submodule:output_type -> repo.RepoMsg
+	3,  // 76: subcommands.SubCommands.Switch:output_type -> repo.RepoMsg
+	3,  // 77: subcommands.SubCommands.Tag:output_type -> repo.RepoMsg
+	3,  // 78: subcommands.SubCommands.Worktree:output_type -> repo.RepoMsg
+	40, // [40:79] is the sub-list for method output_type
+	1,  // [1:40] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
