@@ -44,3 +44,6 @@ go.work.sum
 
 # Claude Code local state.
 /.claude/
+
+# Generated pb/ dirs under each gluon/ service (refreshed by GLUON_EXAMPLE.sh).
+/gluon/*/pb/
