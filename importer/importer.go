@@ -223,11 +223,17 @@ func (s *Server) pull(ctx context.Context, r *pb.Repo) *pb.RepoMsg {
 	return msg
 }
 
+// applyBranchCommit moves HEAD to the request's pinned revision. Commit wins
+// over Branch when both are set — `git checkout <commit>` detaches HEAD, so
+// checking out the branch first is wasted work and can surface spurious
+// errors (e.g., branch missing locally) that the commit checkout would then
+// mask. Callers are expected to have fetched before calling this.
 func applyBranchCommit(ctx context.Context, dir string, r *pb.Repo, msg *pb.RepoMsg) {
-	if r.GetBranch() != "" {
-		gitexec.Exec(ctx, dir, msg, "checkout", r.GetBranch())
-	}
 	if r.GetCommit() != "" {
 		gitexec.Exec(ctx, dir, msg, "checkout", r.GetCommit())
+		return
+	}
+	if r.GetBranch() != "" {
+		gitexec.Exec(ctx, dir, msg, "checkout", r.GetBranch())
 	}
 }

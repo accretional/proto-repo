@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -227,6 +228,145 @@ func TestDownloadIsClonePlusPull(t *testing.T) {
 	}
 	if msgs := collectRepoMsgs(t, s2); len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
 		t.Fatalf("Download #2 errs: %+v", msgs)
+	}
+}
+
+// seedRepoWithBranch builds on seedRepo by adding a second commit on a named
+// branch, then resetting main back to the first commit. Returns (path,
+// mainSHA, featureSHA) so tests can assert HEAD landed on a specific rev.
+func seedRepoWithBranch(t *testing.T, parent, name, branch string) (string, string, string) {
+	t.Helper()
+	dir := seedRepo(t, parent, name)
+	run := func(args ...string) string {
+		c := exec.Command("git", args...)
+		c.Dir = dir
+		out, err := c.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return string(out)
+	}
+	mainSHA := strings.TrimSpace(run("rev-parse", "HEAD"))
+	run("checkout", "-q", "-b", branch)
+	if err := os.WriteFile(filepath.Join(dir, "feature.txt"), []byte("feat\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run("-c", "user.email=t@t", "-c", "user.name=t", "add", ".")
+	run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "feat")
+	featureSHA := strings.TrimSpace(run("rev-parse", "HEAD"))
+	run("checkout", "-q", "main")
+	return dir, mainSHA, featureSHA
+}
+
+func headState(t *testing.T, dir string) (sha, ref string) {
+	t.Helper()
+	sha = strings.TrimSpace(runGit(t, dir, "rev-parse", "HEAD"))
+	ref = strings.TrimSpace(runGit(t, dir, "rev-parse", "--abbrev-ref", "HEAD"))
+	return
+}
+
+func runGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	c := exec.Command("git", args...)
+	c.Dir = dir
+	out, err := c.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+	return string(out)
+}
+
+func TestCloneBranchOnly(t *testing.T) {
+	tmp := t.TempDir()
+	src, _, featureSHA := seedRepoWithBranch(t, filepath.Join(tmp, "src"), "demo", "feature")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	r := uriRepo("file://" + src)
+	r.Branch = "feature"
+	stream, err := client.Clone(ctx, &pb.RepoList{Repos: []*pb.Repo{r}})
+	if err != nil {
+		t.Fatalf("Clone: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
+		t.Fatalf("clone errs: %+v", msgs)
+	}
+	clonedPath := filepath.Join(scratch, "demo")
+	sha, ref := headState(t, clonedPath)
+	if ref != "feature" {
+		t.Errorf("HEAD ref = %q, want feature", ref)
+	}
+	if sha != featureSHA {
+		t.Errorf("HEAD sha = %q, want %q", sha, featureSHA)
+	}
+}
+
+func TestCloneCommitOnly(t *testing.T) {
+	tmp := t.TempDir()
+	src, mainSHA, _ := seedRepoWithBranch(t, filepath.Join(tmp, "src"), "demo", "feature")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	r := uriRepo("file://" + src)
+	r.Commit = mainSHA
+	stream, err := client.Clone(ctx, &pb.RepoList{Repos: []*pb.Repo{r}})
+	if err != nil {
+		t.Fatalf("Clone: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
+		t.Fatalf("clone errs: %+v", msgs)
+	}
+	clonedPath := filepath.Join(scratch, "demo")
+	sha, ref := headState(t, clonedPath)
+	if ref != "HEAD" {
+		t.Errorf("HEAD ref = %q, want HEAD (detached)", ref)
+	}
+	if sha != mainSHA {
+		t.Errorf("HEAD sha = %q, want %q", sha, mainSHA)
+	}
+}
+
+// TestCloneCommitWinsOverBranch verifies Commit takes precedence when both
+// are set: HEAD ends up detached at Commit, not on Branch. The old code did
+// a wasted branch checkout first, which could also surface spurious errors.
+func TestCloneCommitWinsOverBranch(t *testing.T) {
+	tmp := t.TempDir()
+	src, mainSHA, featureSHA := seedRepoWithBranch(t, filepath.Join(tmp, "src"), "demo", "feature")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	r := uriRepo("file://" + src)
+	r.Branch = "feature"
+	r.Commit = mainSHA
+	stream, err := client.Clone(ctx, &pb.RepoList{Repos: []*pb.Repo{r}})
+	if err != nil {
+		t.Fatalf("Clone: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
+		t.Fatalf("clone errs: %+v", msgs)
+	}
+	clonedPath := filepath.Join(scratch, "demo")
+	sha, ref := headState(t, clonedPath)
+	if sha != mainSHA {
+		t.Errorf("HEAD sha = %q, want %q (commit wins over branch)", sha, mainSHA)
+	}
+	if ref != "HEAD" {
+		t.Errorf("HEAD ref = %q, want HEAD (detached)", ref)
+	}
+	if sha == featureSHA {
+		t.Errorf("HEAD landed on feature sha %q — Branch should have been ignored", featureSHA)
 	}
 }
 
