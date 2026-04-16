@@ -32,6 +32,21 @@ Starts `importerd`, which registers both the `Importer` and `SubCommands`
 services on a single gRPC listener. SIGINT/SIGTERM trigger `GracefulStop` so
 in-flight streams drain cleanly.
 
+## Mirror a whole GitHub account
+
+```
+./LET_IT_RIP.sh ghbackup --owner <login> --dest <dir>
+   [--include-forks] [--include-archived]
+```
+
+`cmd/ghbackup` is a thin CLI around `Importer.Download` with a `gh_owner`
+source. It clones every repo under the given user/org into `<dest>/<name>`,
+and is incremental — re-running fetches and fast-forwards existing
+checkouts rather than re-cloning. Auth uses `$GH_TOKEN`, `$GITHUB_TOKEN`,
+or `gh auth token` (in that order); git itself authenticates through
+whatever credential helper is configured, so run `gh auth setup-git` once
+if private clones prompt for a password.
+
 ## Two ways to call SubCommands
 
 `subcommands/` exposes every command twice:
