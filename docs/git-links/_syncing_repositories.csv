@@ -1,0 +1,12 @@
+url,text
+https://git-scm.com/docs/git-daemon,git-daemon[1]
+https://git-scm.com/docs/git-fetch-pack,git-fetch-pack[1]
+https://git-scm.com/docs/git-http-backend,git-http-backend[1]
+https://git-scm.com/docs/git-send-pack,git-send-pack[1]
+https://git-scm.com/docs/git-update-server-info,git-update-server-info[1]
+https://git-scm.com/docs/git-http-fetch,git-http-fetch[1]
+https://git-scm.com/docs/git-http-push,git-http-push[1]
+https://git-scm.com/docs/git-receive-pack,git-receive-pack[1]
+https://git-scm.com/docs/git-shell,git-shell[1]
+https://git-scm.com/docs/git-upload-archive,git-upload-archive[1]
+https://git-scm.com/docs/git-upload-pack,git-upload-pack[1]

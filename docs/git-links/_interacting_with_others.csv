@@ -1,0 +1,11 @@
+url,text
+https://git-scm.com/docs/git-archimport,git-archimport[1]
+https://git-scm.com/docs/git-cvsexportcommit,git-cvsexportcommit[1]
+https://git-scm.com/docs/git-cvsimport,git-cvsimport[1]
+https://git-scm.com/docs/git-cvsserver,git-cvsserver[1]
+https://git-scm.com/docs/git-imap-send,git-imap-send[1]
+https://git-scm.com/docs/git-p4,git-p4[1]
+https://git-scm.com/docs/git-quiltimport,git-quiltimport[1]
+https://git-scm.com/docs/git-request-pull,git-request-pull[1]
+https://git-scm.com/docs/git-send-email,git-send-email[1]
+https://git-scm.com/docs/git-svn,git-svn[1]
