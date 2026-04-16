@@ -1,0 +1,22 @@
+# ghbackup-crontab.sample — example crontab entries for the two mirrors
+# maintained on this machine. Install with `crontab -e` and paste whichever
+# lines you want active; edit the absolute paths and schedules to taste.
+#
+# Both entries use --quiet + --lock-file so:
+#   • cron only emails you on actual failures (ghbackup exits non-zero),
+#   • overlapping runs no-op cleanly instead of stacking up mirrors.
+#
+# macOS note: on Catalina+, cron needs Full Disk Access for your user's
+# `cron` process in System Settings → Privacy & Security → Full Disk Access,
+# otherwise mounted-volume writes silently fail.
+#
+# Paths below assume the repo is checked out at the hard-coded location
+# used on this machine; adjust PROTOREPO if yours differs.
+
+PROTOREPO=/Volumes/wd_office_1/repos/proto-repo
+
+# Daily at 02:30 — mirror everything under the accretional org.
+30 2 * * * $PROTOREPO/ghbackup-cron.sh --owner accretional --dest /Volumes/wd_office_1/backup/repos --quiet --lock-file /tmp/ghbackup-accretional.lock
+
+# Weekly on Sunday at 03:15 — refresh the curated third-party protobuf list.
+15 3 * * 0 $PROTOREPO/ghbackup-cron.sh --list-file /Volumes/wd_office_1/third_party/repos.txt --dest /Volumes/wd_office_1/third_party --quiet --lock-file /tmp/ghbackup-third-party.lock
