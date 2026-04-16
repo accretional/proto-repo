@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	pb "github.com/accretional/proto-repo/genpb"
+	"github.com/accretional/proto-repo/internal/gitexec"
 )
 
 // Execute dispatches a structured Subcommand: inspects the args oneof,
@@ -15,7 +16,7 @@ import (
 func (s *Server) Execute(ctx context.Context, req *pb.Subcommand) (*pb.RepoMsg, error) {
 	sub, argv, err := buildArgv(req)
 	if err != nil {
-		msg := newMsg(req.GetRepo())
+		msg := gitexec.NewMsg(req.GetRepo())
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg, nil
 	}

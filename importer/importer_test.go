@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "github.com/accretional/proto-repo/genpb"
+	"github.com/accretional/proto-repo/internal/gitexec"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -48,7 +49,11 @@ func startServer(t *testing.T, scratch string) (pb.ImporterClient, func()) {
 	t.Helper()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer()
-	pb.RegisterImporterServer(srv, New(scratch))
+	s, err := New(scratch)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	pb.RegisterImporterServer(srv, s)
 	go func() { _ = srv.Serve(lis) }()
 
 	conn, err := grpc.NewClient(
@@ -117,7 +122,7 @@ func TestCloneWherePullZip(t *testing.T) {
 		t.Fatalf("clone errs: %v", errs)
 	}
 	clonedPath := filepath.Join(scratch, "demo")
-	if !isGitRepo(clonedPath) {
+	if !gitexec.IsGitRepo(clonedPath) {
 		t.Fatalf("clone: expected git checkout at %s", clonedPath)
 	}
 
@@ -212,7 +217,7 @@ func TestDownloadIsClonePlusPull(t *testing.T) {
 	if msgs := collectRepoMsgs(t, s1); len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
 		t.Fatalf("Download #1 errs: %+v", msgs)
 	}
-	if !isGitRepo(filepath.Join(scratch, "demo")) {
+	if !gitexec.IsGitRepo(filepath.Join(scratch, "demo")) {
 		t.Fatalf("Download #1 didn't create checkout")
 	}
 	// Second Download = pull (no error against unchanged upstream).
@@ -248,17 +253,3 @@ func TestWherePathSourceReturnsItself(t *testing.T) {
 	}
 }
 
-func TestNameFromURI(t *testing.T) {
-	cases := map[string]string{
-		"https://github.com/foo/bar.git": "bar",
-		"https://github.com/foo/bar/":    "bar",
-		"file:///tmp/baz":                "baz",
-		"file:///tmp/qux.git":            "qux",
-		"git@github.com:foo/bar.git":     "bar",
-	}
-	for in, want := range cases {
-		if got := nameFromURI(in); got != want {
-			t.Errorf("nameFromURI(%q) = %q, want %q", in, got, want)
-		}
-	}
-}

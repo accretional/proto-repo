@@ -27,7 +27,11 @@ func main() {
 		log.Fatalf("listen %s: %v", *addr, err)
 	}
 	s := grpc.NewServer()
-	pb.RegisterImporterServer(s, importer.New(*scratchDir))
+	imp, err := importer.New(*scratchDir)
+	if err != nil {
+		log.Fatalf("importer.New: %v", err)
+	}
+	pb.RegisterImporterServer(s, imp)
 	sc, err := subcommands.New(*scratchDir)
 	if err != nil {
 		log.Fatalf("subcommands.New: %v", err)

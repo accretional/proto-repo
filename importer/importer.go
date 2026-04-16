@@ -7,13 +7,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	pb "github.com/accretional/proto-repo/genpb"
+	"github.com/accretional/proto-repo/internal/gitexec"
 	"google.golang.org/grpc"
 )
 
@@ -24,7 +22,14 @@ type Server struct {
 	ScratchDir string
 }
 
-func New(scratchDir string) *Server { return &Server{ScratchDir: scratchDir} }
+// New constructs a Server after verifying git is on PATH and new enough.
+// Mirrors subcommands.New — fails fast if git is missing or too old.
+func New(scratchDir string) (*Server, error) {
+	if _, err := gitexec.ProbeGit(); err != nil {
+		return nil, err
+	}
+	return &Server{ScratchDir: scratchDir}, nil
+}
 
 // Download ensures each repo is present on disk: clones if missing,
 // otherwise fetches + fast-forwards. Streams one RepoMsg per input.
@@ -63,7 +68,10 @@ func (s *Server) Pull(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.Rep
 // Path may be empty if the source can't be resolved.
 func (s *Server) Where(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.RepoPath]) error {
 	for _, r := range req.GetRepos() {
-		path, _ := s.localPath(r)
+		path := ""
+		if rv, err := gitexec.Resolve(s.ScratchDir, r); err == nil {
+			path = rv.Path
+		}
 		if err := stream.Send(&pb.RepoPath{Path: path}); err != nil {
 			return err
 		}
@@ -71,31 +79,32 @@ func (s *Server) Where(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.Re
 	return nil
 }
 
-// Zip writes a single zip archive containing every input repo's working tree
-// (skipping .git) and returns its path, total size, and file count.
+// Zip writes a zip archive containing every input repo's working tree
+// (skipping .git). Each call creates a uniquely-named file under ScratchDir
+// so concurrent Zip requests don't race.
 func (s *Server) Zip(ctx context.Context, req *pb.RepoList) (*pb.MultiRepoZip, error) {
 	if err := os.MkdirAll(s.ScratchDir, 0o755); err != nil {
 		return nil, fmt.Errorf("zip: mkdir scratch: %w", err)
 	}
-	zipPath := filepath.Join(s.ScratchDir, "_repos.zip")
-	f, err := os.Create(zipPath)
+	f, err := os.CreateTemp(s.ScratchDir, "repos-*.zip")
 	if err != nil {
-		return nil, fmt.Errorf("zip: create %s: %w", zipPath, err)
+		return nil, fmt.Errorf("zip: create temp: %w", err)
 	}
+	zipPath := f.Name()
 	defer f.Close()
 	zw := zip.NewWriter(f)
 
 	var nFiles int32
 	for _, r := range req.GetRepos() {
-		path, err := s.localPath(r)
-		if err != nil || path == "" {
+		rv, err := gitexec.Resolve(s.ScratchDir, r)
+		if err != nil || rv.Path == "" {
 			continue
 		}
-		if _, err := os.Stat(path); err != nil {
+		if _, err := os.Stat(rv.Path); err != nil {
 			continue
 		}
-		root := filepath.Base(path)
-		walkErr := filepath.Walk(path, func(p string, info os.FileInfo, werr error) error {
+		root := filepath.Base(rv.Path)
+		walkErr := filepath.Walk(rv.Path, func(p string, info os.FileInfo, werr error) error {
 			if werr != nil {
 				return nil
 			}
@@ -108,7 +117,7 @@ func (s *Server) Zip(ctx context.Context, req *pb.RepoList) (*pb.MultiRepoZip, e
 			if !info.Mode().IsRegular() {
 				return nil
 			}
-			rel, err := filepath.Rel(path, p)
+			rel, err := filepath.Rel(rv.Path, p)
 			if err != nil {
 				return nil
 			}
@@ -129,7 +138,7 @@ func (s *Server) Zip(ctx context.Context, req *pb.RepoList) (*pb.MultiRepoZip, e
 		})
 		if walkErr != nil {
 			zw.Close()
-			return nil, fmt.Errorf("zip: walk %s: %w", path, walkErr)
+			return nil, fmt.Errorf("zip: walk %s: %w", rv.Path, walkErr)
 		}
 	}
 	if err := zw.Close(); err != nil {
@@ -147,180 +156,78 @@ func (s *Server) Zip(ctx context.Context, req *pb.RepoList) (*pb.MultiRepoZip, e
 	}, nil
 }
 
-// --- internal helpers (also handy for tests) ---
-
-// resolved is everything we need to act on a single Repo.
-type resolved struct {
-	cloneURL string // empty for path-sourced repos
-	name     string // local subdir name under ScratchDir
-	explicit string // non-empty if the repo's source is an explicit local path
-}
-
-func (s *Server) resolve(r *pb.Repo) (resolved, error) {
-	src := r.GetSource()
-	if src == nil || src.Source == nil {
-		return resolved{}, fmt.Errorf("repo missing source")
-	}
-	switch v := src.Source.(type) {
-	case *pb.RepoSource_Uri:
-		if v.Uri == "" {
-			return resolved{}, fmt.Errorf("uri source is empty")
-		}
-		return resolved{cloneURL: v.Uri, name: nameFromURI(v.Uri)}, nil
-	case *pb.RepoSource_Gh:
-		gh := v.Gh
-		if gh == nil || gh.Owner == "" || gh.Name == "" {
-			return resolved{}, fmt.Errorf("github source missing owner/name")
-		}
-		return resolved{
-			cloneURL: fmt.Sprintf("https://github.com/%s/%s.git", gh.Owner, gh.Name),
-			name:     gh.Name,
-		}, nil
-	case *pb.RepoSource_Path:
-		if v.Path == nil || v.Path.Path == "" {
-			return resolved{}, fmt.Errorf("path source missing path")
-		}
-		abs, err := filepath.Abs(v.Path.Path)
-		if err != nil {
-			return resolved{}, err
-		}
-		return resolved{name: filepath.Base(abs), explicit: abs}, nil
-	}
-	return resolved{}, fmt.Errorf("unknown source type")
-}
-
-func (s *Server) localPath(r *pb.Repo) (string, error) {
-	rv, err := s.resolve(r)
-	if err != nil {
-		return "", err
-	}
-	if rv.explicit != "" {
-		return rv.explicit, nil
-	}
-	return filepath.Join(s.ScratchDir, rv.name), nil
-}
-
 func (s *Server) fetch(ctx context.Context, r *pb.Repo) *pb.RepoMsg {
-	msg := newMsg(r)
-	rv, err := s.resolve(r)
+	msg := gitexec.NewMsg(r)
+	rv, err := gitexec.Resolve(s.ScratchDir, r)
 	if err != nil {
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg
 	}
-	if rv.explicit != "" {
-		msg.Stdout.Line = append(msg.Stdout.Line, "local path source: "+rv.explicit)
+	if rv.Explicit {
+		msg.Stdout.Line = append(msg.Stdout.Line, "local path source: "+rv.Path)
 		return msg
 	}
-	dest := filepath.Join(s.ScratchDir, rv.name)
-	if isGitRepo(dest) {
-		s.runInto(ctx, dest, msg, "git", "fetch", "--all", "--prune")
-		s.runInto(ctx, dest, msg, "git", "pull", "--ff-only")
+	if gitexec.IsGitRepo(rv.Path) {
+		gitexec.Exec(ctx, rv.Path, msg, "fetch", "--all", "--prune")
+		gitexec.Exec(ctx, rv.Path, msg, "pull", "--ff-only")
 	} else {
 		if err := os.MkdirAll(s.ScratchDir, 0o755); err != nil {
 			msg.Errs = append(msg.Errs, err.Error())
 			return msg
 		}
-		s.runInto(ctx, "", msg, "git", "clone", rv.cloneURL, dest)
+		gitexec.Exec(ctx, "", msg, "clone", rv.CloneURL, rv.Path)
 	}
-	s.applyBranchCommit(ctx, dest, r, msg)
+	applyBranchCommit(ctx, rv.Path, r, msg)
 	return msg
 }
 
 func (s *Server) clone(ctx context.Context, r *pb.Repo) *pb.RepoMsg {
-	msg := newMsg(r)
-	rv, err := s.resolve(r)
+	msg := gitexec.NewMsg(r)
+	rv, err := gitexec.Resolve(s.ScratchDir, r)
 	if err != nil {
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg
 	}
-	if rv.explicit != "" {
-		msg.Stdout.Line = append(msg.Stdout.Line, "local path source: "+rv.explicit)
+	if rv.Explicit {
+		msg.Stdout.Line = append(msg.Stdout.Line, "local path source: "+rv.Path)
 		return msg
 	}
-	dest := filepath.Join(s.ScratchDir, rv.name)
-	if isGitRepo(dest) {
-		msg.Stdout.Line = append(msg.Stdout.Line, "already cloned: "+dest)
-		s.applyBranchCommit(ctx, dest, r, msg)
+	if gitexec.IsGitRepo(rv.Path) {
+		msg.Stdout.Line = append(msg.Stdout.Line, "already cloned: "+rv.Path)
+		applyBranchCommit(ctx, rv.Path, r, msg)
 		return msg
 	}
 	if err := os.MkdirAll(s.ScratchDir, 0o755); err != nil {
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg
 	}
-	s.runInto(ctx, "", msg, "git", "clone", rv.cloneURL, dest)
-	s.applyBranchCommit(ctx, dest, r, msg)
+	gitexec.Exec(ctx, "", msg, "clone", rv.CloneURL, rv.Path)
+	applyBranchCommit(ctx, rv.Path, r, msg)
 	return msg
 }
 
 func (s *Server) pull(ctx context.Context, r *pb.Repo) *pb.RepoMsg {
-	msg := newMsg(r)
-	path, err := s.localPath(r)
+	msg := gitexec.NewMsg(r)
+	rv, err := gitexec.Resolve(s.ScratchDir, r)
 	if err != nil {
 		msg.Errs = append(msg.Errs, err.Error())
 		return msg
 	}
-	if !isGitRepo(path) {
-		msg.Errs = append(msg.Errs, "not a git checkout: "+path)
+	if !gitexec.IsGitRepo(rv.Path) {
+		msg.Errs = append(msg.Errs, "not a git checkout: "+rv.Path)
 		return msg
 	}
-	s.runInto(ctx, path, msg, "git", "fetch", "--all", "--prune")
-	s.runInto(ctx, path, msg, "git", "pull", "--ff-only")
-	s.applyBranchCommit(ctx, path, r, msg)
+	gitexec.Exec(ctx, rv.Path, msg, "fetch", "--all", "--prune")
+	gitexec.Exec(ctx, rv.Path, msg, "pull", "--ff-only")
+	applyBranchCommit(ctx, rv.Path, r, msg)
 	return msg
 }
 
-func (s *Server) applyBranchCommit(ctx context.Context, dir string, r *pb.Repo, msg *pb.RepoMsg) {
+func applyBranchCommit(ctx context.Context, dir string, r *pb.Repo, msg *pb.RepoMsg) {
 	if r.GetBranch() != "" {
-		s.runInto(ctx, dir, msg, "git", "checkout", r.GetBranch())
+		gitexec.Exec(ctx, dir, msg, "checkout", r.GetBranch())
 	}
 	if r.GetCommit() != "" {
-		s.runInto(ctx, dir, msg, "git", "checkout", r.GetCommit())
+		gitexec.Exec(ctx, dir, msg, "checkout", r.GetCommit())
 	}
-}
-
-func (s *Server) runInto(ctx context.Context, dir string, msg *pb.RepoMsg, name string, args ...string) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	if dir != "" {
-		cmd.Dir = dir
-	}
-	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	msg.Stdout.Line = append(msg.Stdout.Line, splitLines(stdout.String())...)
-	msg.Stderr.Line = append(msg.Stderr.Line, splitLines(stderr.String())...)
-	if err != nil {
-		msg.Errs = append(msg.Errs, fmt.Sprintf("%s %s: %v", name, strings.Join(args, " "), err))
-	}
-}
-
-func newMsg(r *pb.Repo) *pb.RepoMsg {
-	return &pb.RepoMsg{Repo: r, Stdout: &pb.RepoLogs{}, Stderr: &pb.RepoLogs{}}
-}
-
-func isGitRepo(dir string) bool {
-	info, err := os.Stat(filepath.Join(dir, ".git"))
-	return err == nil && info.IsDir()
-}
-
-func splitLines(s string) []string {
-	s = strings.TrimRight(s, "\n")
-	if s == "" {
-		return nil
-	}
-	return strings.Split(s, "\n")
-}
-
-// nameFromURI extracts a sensible local subdirectory name from a clone URL,
-// e.g. "https://github.com/foo/bar.git" -> "bar", "file:///tmp/x" -> "x".
-func nameFromURI(uri string) string {
-	if i := strings.IndexAny(uri, "?#"); i >= 0 {
-		uri = uri[:i]
-	}
-	uri = strings.TrimRight(uri, "/")
-	uri = strings.TrimSuffix(uri, ".git")
-	if u, err := url.Parse(uri); err == nil && u.Path != "" {
-		return filepath.Base(u.Path)
-	}
-	return filepath.Base(uri)
 }
