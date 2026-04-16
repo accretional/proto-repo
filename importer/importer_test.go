@@ -3,6 +3,7 @@ package importer
 import (
 	"archive/zip"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	pb "github.com/accretional/proto-repo/genpb"
 	"github.com/accretional/proto-repo/internal/gitexec"
+	"github.com/accretional/proto-repo/scan"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -45,14 +47,19 @@ func seedRepo(t *testing.T, parent, name string) string {
 }
 
 // startServer wires Server into a bufconn-backed grpc.Server and returns a
-// connected client + cleanup.
-func startServer(t *testing.T, scratch string) (pb.ImporterClient, func()) {
+// connected client + cleanup. If lister is non-nil it replaces the default
+// GitHub client so gh_owner expansion can be driven by tests instead of
+// hitting api.github.com.
+func startServer(t *testing.T, scratch string, lister ...OwnerLister) (pb.ImporterClient, func()) {
 	t.Helper()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer()
 	s, err := New(scratch)
 	if err != nil {
 		t.Fatalf("New: %v", err)
+	}
+	if len(lister) > 0 {
+		s.Github = lister[0]
 	}
 	pb.RegisterImporterServer(srv, s)
 	go func() { _ = srv.Serve(lis) }()
@@ -606,3 +613,191 @@ func TestMultiRepoStreams(t *testing.T) {
 	}
 }
 
+// ---- gh_owner expansion ---------------------------------------------------
+
+// fakeLister returns canned responses from an in-memory map keyed by owner.
+// Set err to fail the next ListRepos call unconditionally.
+type fakeLister struct {
+	byOwner map[string][]scan.Repo
+	err     error
+}
+
+func (f *fakeLister) ListRepos(_ context.Context, owner string) ([]scan.Repo, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.byOwner[owner], nil
+}
+
+func ghOwnerRepo(owner string, opts *pb.GithubOptions) *pb.Repo {
+	return &pb.Repo{Source: &pb.RepoSource{Source: &pb.RepoSource_GhOwner{
+		GhOwner: &pb.GithubOwner{Owner: owner, Options: opts},
+	}}}
+}
+
+// TestWhereGhOwnerExpansion confirms a single gh_owner input expands to one
+// RepoPath per listed repo, using the CloneURL to derive the local path
+// via <scratch>/<name-from-url>.
+func TestWhereGhOwnerExpansion(t *testing.T) {
+	tmp := t.TempDir()
+	scratch := filepath.Join(tmp, "scratch")
+	lister := &fakeLister{byOwner: map[string][]scan.Repo{
+		"octo": {
+			{Owner: "octo", Name: "one", CloneURL: "https://github.com/octo/one.git"},
+			{Owner: "octo", Name: "two", CloneURL: "https://github.com/octo/two.git"},
+		},
+	}}
+	client, stop := startServer(t, scratch, lister)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := client.Where(ctx, &pb.RepoList{Repos: []*pb.Repo{ghOwnerRepo("octo", nil)}})
+	if err != nil {
+		t.Fatalf("Where: %v", err)
+	}
+	var got []string
+	for {
+		m, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("recv: %v", err)
+		}
+		got = append(got, m.GetPath())
+	}
+	want := []string{filepath.Join(scratch, "one"), filepath.Join(scratch, "two")}
+	if len(got) != len(want) {
+		t.Fatalf("got %d paths, want %d (%v)", len(got), len(want), got)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("paths[%d] = %q, want %q", i, got[i], w)
+		}
+	}
+}
+
+// TestExpandOwnersFiltersForksAndArchived verifies the default behavior
+// (both flags off) excludes forks and archived repos; the opt-in variants
+// include them. Exercised end-to-end via Where.
+func TestExpandOwnersFiltersForksAndArchived(t *testing.T) {
+	tmp := t.TempDir()
+	scratch := filepath.Join(tmp, "scratch")
+	lister := &fakeLister{byOwner: map[string][]scan.Repo{
+		"acme": {
+			{Name: "plain", CloneURL: "https://github.com/acme/plain.git"},
+			{Name: "forky", CloneURL: "https://github.com/acme/forky.git", Fork: true},
+			{Name: "stale", CloneURL: "https://github.com/acme/stale.git", Archived: true},
+		},
+	}}
+	client, stop := startServer(t, scratch, lister)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	countPaths := func(repo *pb.Repo) []string {
+		stream, err := client.Where(ctx, &pb.RepoList{Repos: []*pb.Repo{repo}})
+		if err != nil {
+			t.Fatalf("Where: %v", err)
+		}
+		var paths []string
+		for {
+			m, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("recv: %v", err)
+			}
+			paths = append(paths, filepath.Base(m.GetPath()))
+		}
+		return paths
+	}
+
+	if got := countPaths(ghOwnerRepo("acme", nil)); len(got) != 1 || got[0] != "plain" {
+		t.Errorf("default expansion = %v, want just [plain]", got)
+	}
+	if got := countPaths(ghOwnerRepo("acme", &pb.GithubOptions{IncludeForks: true})); len(got) != 2 {
+		t.Errorf("include_forks expansion = %v, want 2 (plain+forky)", got)
+	}
+	if got := countPaths(ghOwnerRepo("acme", &pb.GithubOptions{IncludeArchived: true})); len(got) != 2 {
+		t.Errorf("include_archived expansion = %v, want 2 (plain+stale)", got)
+	}
+	if got := countPaths(ghOwnerRepo("acme", &pb.GithubOptions{IncludeForks: true, IncludeArchived: true})); len(got) != 3 {
+		t.Errorf("both-flags expansion = %v, want 3", got)
+	}
+}
+
+// TestDownloadGhOwnerExpansion drives a full expand-then-clone cycle
+// against local file:// repos — the fake lister returns CloneURLs pointing
+// at seeded upstreams on disk, so the server clones without touching the
+// network.
+func TestDownloadGhOwnerExpansion(t *testing.T) {
+	tmp := t.TempDir()
+	srcA := seedRepo(t, filepath.Join(tmp, "src"), "alpha")
+	srcB := seedRepo(t, filepath.Join(tmp, "src"), "beta")
+	scratch := filepath.Join(tmp, "scratch")
+	lister := &fakeLister{byOwner: map[string][]scan.Repo{
+		"team": {
+			{Owner: "team", Name: "alpha", CloneURL: "file://" + srcA},
+			{Owner: "team", Name: "beta", CloneURL: "file://" + srcB},
+		},
+	}}
+	client, stop := startServer(t, scratch, lister)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stream, err := client.Download(ctx, &pb.RepoList{Repos: []*pb.Repo{ghOwnerRepo("team", nil)}})
+	if err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 2 {
+		t.Fatalf("got %d msgs, want 2", len(msgs))
+	}
+	for i, m := range msgs {
+		if len(m.GetErrs()) > 0 {
+			t.Errorf("msg[%d] errs: %v", i, m.GetErrs())
+		}
+	}
+	for _, name := range []string{"alpha", "beta"} {
+		if !gitexec.IsGitRepo(filepath.Join(scratch, name)) {
+			t.Errorf("expected checkout at %s", filepath.Join(scratch, name))
+		}
+	}
+}
+
+// TestExpandOwnersListingFailure confirms a listing error surfaces as a
+// RepoMsg with errs set (not a gRPC error), leaving the stream intact so
+// other repos in the request still proceed.
+func TestExpandOwnersListingFailure(t *testing.T) {
+	tmp := t.TempDir()
+	src := seedRepo(t, filepath.Join(tmp, "src"), "demo")
+	scratch := filepath.Join(tmp, "scratch")
+	lister := &fakeLister{err: fmt.Errorf("rate limited")}
+	client, stop := startServer(t, scratch, lister)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	repos := &pb.RepoList{Repos: []*pb.Repo{
+		ghOwnerRepo("broken", nil),
+		uriRepo("file://" + src),
+	}}
+	stream, err := client.Clone(ctx, repos)
+	if err != nil {
+		t.Fatalf("Clone: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 2 {
+		t.Fatalf("got %d msgs, want 2", len(msgs))
+	}
+	if errs := msgs[0].GetErrs(); len(errs) == 0 || !strings.Contains(errs[0], "rate limited") {
+		t.Errorf("expected rate-limit error in first msg, got %v", errs)
+	}
+	if errs := msgs[1].GetErrs(); len(errs) > 0 {
+		t.Errorf("second repo shouldn't have errored: %v", errs)
+	}
+}

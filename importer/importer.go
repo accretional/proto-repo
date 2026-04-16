@@ -12,52 +12,130 @@ import (
 
 	pb "github.com/accretional/proto-repo/genpb"
 	"github.com/accretional/proto-repo/internal/gitexec"
+	"github.com/accretional/proto-repo/scan"
 	"google.golang.org/grpc"
 )
 
+// OwnerLister enumerates repos under a GitHub user or org login. Wired as
+// an interface so tests can swap in a fake — the real implementation is
+// scan.GithubClient.
+type OwnerLister interface {
+	ListRepos(ctx context.Context, owner string) ([]scan.Repo, error)
+}
+
 // Server implements pb.ImporterServer. ScratchDir is the parent directory
 // under which URI/GitHub-sourced repos are cloned (one subdir per repo).
+// Github expands gh_owner RepoSources into concrete repos; nil disables
+// that expansion (callers asking for a gh_owner get an error back).
 type Server struct {
 	pb.UnimplementedImporterServer
 	ScratchDir string
+	Github     OwnerLister
 }
 
 // New constructs a Server after verifying git is on PATH and new enough.
 // Mirrors subcommands.New — fails fast if git is missing or too old.
+// Populates Github from scan.GithubClient with a gh-CLI token if one is
+// available; callers who want to disable/override can set Server.Github
+// after construction.
 func New(scratchDir string) (*Server, error) {
 	if _, err := gitexec.ProbeGit(); err != nil {
 		return nil, err
 	}
-	return &Server{ScratchDir: scratchDir}, nil
+	return &Server{
+		ScratchDir: scratchDir,
+		Github:     scan.NewGithubClient(scan.TokenFromGHCLI()),
+	}, nil
+}
+
+// expandOwners walks reqs and replaces every gh_owner-sourced Repo with
+// the concrete per-repo entries the GitHub API returns, filtered by the
+// owner's GithubOptions (forks/archived excluded by default). Non-owner
+// sources pass through unchanged. Listing failures surface as RepoMsg
+// entries in errMsgs so the caller can stream them alongside real
+// results rather than aborting the whole request.
+func (s *Server) expandOwners(ctx context.Context, reqs []*pb.Repo) (expanded []*pb.Repo, errMsgs []*pb.RepoMsg) {
+	for _, r := range reqs {
+		owner := r.GetSource().GetGhOwner()
+		if owner == nil {
+			expanded = append(expanded, r)
+			continue
+		}
+		if s.Github == nil {
+			errMsgs = append(errMsgs, ownerErr(r, "gh_owner source requires a configured GitHub client"))
+			continue
+		}
+		if owner.GetOwner() == "" {
+			errMsgs = append(errMsgs, ownerErr(r, "gh_owner source missing owner"))
+			continue
+		}
+		repos, err := s.Github.ListRepos(ctx, owner.GetOwner())
+		if err != nil {
+			errMsgs = append(errMsgs, ownerErr(r, fmt.Sprintf("list %s repos: %v", owner.GetOwner(), err)))
+			continue
+		}
+		opts := owner.GetOptions()
+		for _, gr := range repos {
+			if gr.Fork && !opts.GetIncludeForks() {
+				continue
+			}
+			if gr.Archived && !opts.GetIncludeArchived() {
+				continue
+			}
+			// Prefer the CloneURL the API handed us over reconstructing one
+			// ourselves — that preserves SSH vs HTTPS preference and works
+			// for private-network or Enterprise hosts.
+			if gr.CloneURL == "" {
+				continue
+			}
+			expanded = append(expanded, &pb.Repo{
+				Source: &pb.RepoSource{Source: &pb.RepoSource_Uri{Uri: gr.CloneURL}},
+				Branch: r.GetBranch(),
+				Commit: r.GetCommit(),
+			})
+		}
+	}
+	return expanded, errMsgs
+}
+
+func ownerErr(r *pb.Repo, msg string) *pb.RepoMsg {
+	m := gitexec.NewMsg(r)
+	m.Errs = append(m.Errs, msg)
+	return m
 }
 
 // Download ensures each repo is present on disk: clones if missing,
-// otherwise fetches + fast-forwards. Streams one RepoMsg per input.
+// otherwise fetches + fast-forwards. Streams one RepoMsg per resolved
+// input — gh_owner entries expand to one message per repo the owner has.
 func (s *Server) Download(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.RepoMsg]) error {
-	for _, r := range req.GetRepos() {
-		if err := stream.Send(s.fetch(stream.Context(), r)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.streamEach(stream, req.GetRepos(), s.fetch)
 }
 
 // Clone clones each repo. If a checkout already exists, it's reported as a
 // no-op rather than re-cloned.
 func (s *Server) Clone(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.RepoMsg]) error {
-	for _, r := range req.GetRepos() {
-		if err := stream.Send(s.clone(stream.Context(), r)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.streamEach(stream, req.GetRepos(), s.clone)
 }
 
 // Pull runs `git fetch --all --prune` + `git pull --ff-only` against each
 // repo's existing checkout. Errors if a checkout is missing.
 func (s *Server) Pull(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.RepoMsg]) error {
-	for _, r := range req.GetRepos() {
-		if err := stream.Send(s.pull(stream.Context(), r)); err != nil {
+	return s.streamEach(stream, req.GetRepos(), s.pull)
+}
+
+// streamEach is the shared body of Download/Clone/Pull: expand gh_owner
+// sources, send any owner-listing errors first, then invoke fn against
+// each concrete repo and stream the result.
+func (s *Server) streamEach(stream grpc.ServerStreamingServer[pb.RepoMsg], reqs []*pb.Repo, fn func(context.Context, *pb.Repo) *pb.RepoMsg) error {
+	ctx := stream.Context()
+	expanded, errMsgs := s.expandOwners(ctx, reqs)
+	for _, m := range errMsgs {
+		if err := stream.Send(m); err != nil {
+			return err
+		}
+	}
+	for _, r := range expanded {
+		if err := stream.Send(fn(ctx, r)); err != nil {
 			return err
 		}
 	}
@@ -65,9 +143,14 @@ func (s *Server) Pull(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.Rep
 }
 
 // Where returns the local on-disk path each repo would resolve to.
-// Path may be empty if the source can't be resolved.
+// Path may be empty if the source can't be resolved. gh_owner entries
+// expand to one message per repo the owner has; listing failures are
+// silently dropped — Where has no error channel (RepoPath has no errs
+// field), so callers who need structured failure reporting should use
+// Download/Clone/Pull instead.
 func (s *Server) Where(req *pb.RepoList, stream grpc.ServerStreamingServer[pb.RepoPath]) error {
-	for _, r := range req.GetRepos() {
+	expanded, _ := s.expandOwners(stream.Context(), req.GetRepos())
+	for _, r := range expanded {
 		path := ""
 		if rv, err := gitexec.Resolve(s.ScratchDir, r); err == nil {
 			path = rv.Path
@@ -94,8 +177,9 @@ func (s *Server) Zip(ctx context.Context, req *pb.RepoList) (*pb.MultiRepoZip, e
 	defer f.Close()
 	zw := zip.NewWriter(f)
 
+	expanded, _ := s.expandOwners(ctx, req.GetRepos())
 	var nFiles int32
-	for _, r := range req.GetRepos() {
+	for _, r := range expanded {
 		rv, err := gitexec.Resolve(s.ScratchDir, r)
 		if err != nil || rv.Path == "" {
 			continue

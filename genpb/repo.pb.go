@@ -74,6 +74,117 @@ func (x *GithubRepo) GetName() string {
 	return ""
 }
 
+// GithubOwner identifies a GitHub user or organization login. As a RepoSource
+// it's a request for every repo under that owner; the Importer expands it
+// server-side by calling the GitHub API before any clone/pull happens.
+// Callers who just want "all repos for <name>" can leave options unset.
+type GithubOwner struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Owner         string                 `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	Options       *GithubOptions         `protobuf:"bytes,2,opt,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GithubOwner) Reset() {
+	*x = GithubOwner{}
+	mi := &file_repo_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GithubOwner) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GithubOwner) ProtoMessage() {}
+
+func (x *GithubOwner) ProtoReflect() protoreflect.Message {
+	mi := &file_repo_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GithubOwner.ProtoReflect.Descriptor instead.
+func (*GithubOwner) Descriptor() ([]byte, []int) {
+	return file_repo_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GithubOwner) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+func (x *GithubOwner) GetOptions() *GithubOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+// GithubOptions filter which repos a GithubOwner expands to. Both flags
+// default to excluded — typical callers want neither forks nor archived
+// projects in their set.
+type GithubOptions struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	IncludeForks    bool                   `protobuf:"varint,1,opt,name=include_forks,json=includeForks,proto3" json:"include_forks,omitempty"`
+	IncludeArchived bool                   `protobuf:"varint,2,opt,name=include_archived,json=includeArchived,proto3" json:"include_archived,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GithubOptions) Reset() {
+	*x = GithubOptions{}
+	mi := &file_repo_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GithubOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GithubOptions) ProtoMessage() {}
+
+func (x *GithubOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_repo_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GithubOptions.ProtoReflect.Descriptor instead.
+func (*GithubOptions) Descriptor() ([]byte, []int) {
+	return file_repo_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GithubOptions) GetIncludeForks() bool {
+	if x != nil {
+		return x.IncludeForks
+	}
+	return false
+}
+
+func (x *GithubOptions) GetIncludeArchived() bool {
+	if x != nil {
+		return x.IncludeArchived
+	}
+	return false
+}
+
 type RepoSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Source:
@@ -81,6 +192,7 @@ type RepoSource struct {
 	//	*RepoSource_Uri
 	//	*RepoSource_Gh
 	//	*RepoSource_Path
+	//	*RepoSource_GhOwner
 	Source        isRepoSource_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -88,7 +200,7 @@ type RepoSource struct {
 
 func (x *RepoSource) Reset() {
 	*x = RepoSource{}
-	mi := &file_repo_proto_msgTypes[1]
+	mi := &file_repo_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -100,7 +212,7 @@ func (x *RepoSource) String() string {
 func (*RepoSource) ProtoMessage() {}
 
 func (x *RepoSource) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[1]
+	mi := &file_repo_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -113,7 +225,7 @@ func (x *RepoSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoSource.ProtoReflect.Descriptor instead.
 func (*RepoSource) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{1}
+	return file_repo_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RepoSource) GetSource() isRepoSource_Source {
@@ -150,6 +262,15 @@ func (x *RepoSource) GetPath() *RepoPath {
 	return nil
 }
 
+func (x *RepoSource) GetGhOwner() *GithubOwner {
+	if x != nil {
+		if x, ok := x.Source.(*RepoSource_GhOwner); ok {
+			return x.GhOwner
+		}
+	}
+	return nil
+}
+
 type isRepoSource_Source interface {
 	isRepoSource_Source()
 }
@@ -166,11 +287,17 @@ type RepoSource_Path struct {
 	Path *RepoPath `protobuf:"bytes,3,opt,name=path,proto3,oneof"`
 }
 
+type RepoSource_GhOwner struct {
+	GhOwner *GithubOwner `protobuf:"bytes,4,opt,name=gh_owner,json=ghOwner,proto3,oneof"`
+}
+
 func (*RepoSource_Uri) isRepoSource_Source() {}
 
 func (*RepoSource_Gh) isRepoSource_Source() {}
 
 func (*RepoSource_Path) isRepoSource_Source() {}
+
+func (*RepoSource_GhOwner) isRepoSource_Source() {}
 
 // Repo identifies a source code repository from any supported host.
 type Repo struct {
@@ -184,7 +311,7 @@ type Repo struct {
 
 func (x *Repo) Reset() {
 	*x = Repo{}
-	mi := &file_repo_proto_msgTypes[2]
+	mi := &file_repo_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -196,7 +323,7 @@ func (x *Repo) String() string {
 func (*Repo) ProtoMessage() {}
 
 func (x *Repo) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[2]
+	mi := &file_repo_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +336,7 @@ func (x *Repo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Repo.ProtoReflect.Descriptor instead.
 func (*Repo) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{2}
+	return file_repo_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Repo) GetSource() *RepoSource {
@@ -243,7 +370,7 @@ type RepoList struct {
 
 func (x *RepoList) Reset() {
 	*x = RepoList{}
-	mi := &file_repo_proto_msgTypes[3]
+	mi := &file_repo_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -255,7 +382,7 @@ func (x *RepoList) String() string {
 func (*RepoList) ProtoMessage() {}
 
 func (x *RepoList) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[3]
+	mi := &file_repo_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -268,7 +395,7 @@ func (x *RepoList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoList.ProtoReflect.Descriptor instead.
 func (*RepoList) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{3}
+	return file_repo_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RepoList) GetRepos() []*Repo {
@@ -287,7 +414,7 @@ type RepoPath struct {
 
 func (x *RepoPath) Reset() {
 	*x = RepoPath{}
-	mi := &file_repo_proto_msgTypes[4]
+	mi := &file_repo_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -299,7 +426,7 @@ func (x *RepoPath) String() string {
 func (*RepoPath) ProtoMessage() {}
 
 func (x *RepoPath) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[4]
+	mi := &file_repo_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -312,7 +439,7 @@ func (x *RepoPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoPath.ProtoReflect.Descriptor instead.
 func (*RepoPath) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{4}
+	return file_repo_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RepoPath) GetPath() string {
@@ -331,7 +458,7 @@ type RepoLogs struct {
 
 func (x *RepoLogs) Reset() {
 	*x = RepoLogs{}
-	mi := &file_repo_proto_msgTypes[5]
+	mi := &file_repo_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -343,7 +470,7 @@ func (x *RepoLogs) String() string {
 func (*RepoLogs) ProtoMessage() {}
 
 func (x *RepoLogs) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[5]
+	mi := &file_repo_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +483,7 @@ func (x *RepoLogs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoLogs.ProtoReflect.Descriptor instead.
 func (*RepoLogs) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{5}
+	return file_repo_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RepoLogs) GetLine() []string {
@@ -378,7 +505,7 @@ type RepoMsg struct {
 
 func (x *RepoMsg) Reset() {
 	*x = RepoMsg{}
-	mi := &file_repo_proto_msgTypes[6]
+	mi := &file_repo_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -390,7 +517,7 @@ func (x *RepoMsg) String() string {
 func (*RepoMsg) ProtoMessage() {}
 
 func (x *RepoMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[6]
+	mi := &file_repo_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -403,7 +530,7 @@ func (x *RepoMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RepoMsg.ProtoReflect.Descriptor instead.
 func (*RepoMsg) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{6}
+	return file_repo_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RepoMsg) GetRepo() *Repo {
@@ -446,7 +573,7 @@ type MultiRepoZip struct {
 
 func (x *MultiRepoZip) Reset() {
 	*x = MultiRepoZip{}
-	mi := &file_repo_proto_msgTypes[7]
+	mi := &file_repo_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -458,7 +585,7 @@ func (x *MultiRepoZip) String() string {
 func (*MultiRepoZip) ProtoMessage() {}
 
 func (x *MultiRepoZip) ProtoReflect() protoreflect.Message {
-	mi := &file_repo_proto_msgTypes[7]
+	mi := &file_repo_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -471,7 +598,7 @@ func (x *MultiRepoZip) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MultiRepoZip.ProtoReflect.Descriptor instead.
 func (*MultiRepoZip) Descriptor() ([]byte, []int) {
-	return file_repo_proto_rawDescGZIP(), []int{7}
+	return file_repo_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *MultiRepoZip) GetRepos() *RepoList {
@@ -511,12 +638,19 @@ const file_repo_proto_rawDesc = "" +
 	"\n" +
 	"GithubRepo\x12\x14\n" +
 	"\x05owner\x18\x01 \x01(\tR\x05owner\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"t\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"R\n" +
+	"\vGithubOwner\x12\x14\n" +
+	"\x05owner\x18\x01 \x01(\tR\x05owner\x12-\n" +
+	"\aoptions\x18\x02 \x01(\v2\x13.repo.GithubOptionsR\aoptions\"_\n" +
+	"\rGithubOptions\x12#\n" +
+	"\rinclude_forks\x18\x01 \x01(\bR\fincludeForks\x12)\n" +
+	"\x10include_archived\x18\x02 \x01(\bR\x0fincludeArchived\"\xa4\x01\n" +
 	"\n" +
 	"RepoSource\x12\x12\n" +
 	"\x03uri\x18\x01 \x01(\tH\x00R\x03uri\x12\"\n" +
 	"\x02gh\x18\x02 \x01(\v2\x10.repo.GithubRepoH\x00R\x02gh\x12$\n" +
-	"\x04path\x18\x03 \x01(\v2\x0e.repo.RepoPathH\x00R\x04pathB\b\n" +
+	"\x04path\x18\x03 \x01(\v2\x0e.repo.RepoPathH\x00R\x04path\x12.\n" +
+	"\bgh_owner\x18\x04 \x01(\v2\x11.repo.GithubOwnerH\x00R\aghOwnerB\b\n" +
 	"\x06source\"`\n" +
 	"\x04Repo\x12(\n" +
 	"\x06source\x18\x01 \x01(\v2\x10.repo.RepoSourceR\x06source\x12\x16\n" +
@@ -559,41 +693,45 @@ func file_repo_proto_rawDescGZIP() []byte {
 	return file_repo_proto_rawDescData
 }
 
-var file_repo_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_repo_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_repo_proto_goTypes = []any{
-	(*GithubRepo)(nil),   // 0: repo.GithubRepo
-	(*RepoSource)(nil),   // 1: repo.RepoSource
-	(*Repo)(nil),         // 2: repo.Repo
-	(*RepoList)(nil),     // 3: repo.RepoList
-	(*RepoPath)(nil),     // 4: repo.RepoPath
-	(*RepoLogs)(nil),     // 5: repo.RepoLogs
-	(*RepoMsg)(nil),      // 6: repo.RepoMsg
-	(*MultiRepoZip)(nil), // 7: repo.MultiRepoZip
+	(*GithubRepo)(nil),    // 0: repo.GithubRepo
+	(*GithubOwner)(nil),   // 1: repo.GithubOwner
+	(*GithubOptions)(nil), // 2: repo.GithubOptions
+	(*RepoSource)(nil),    // 3: repo.RepoSource
+	(*Repo)(nil),          // 4: repo.Repo
+	(*RepoList)(nil),      // 5: repo.RepoList
+	(*RepoPath)(nil),      // 6: repo.RepoPath
+	(*RepoLogs)(nil),      // 7: repo.RepoLogs
+	(*RepoMsg)(nil),       // 8: repo.RepoMsg
+	(*MultiRepoZip)(nil),  // 9: repo.MultiRepoZip
 }
 var file_repo_proto_depIdxs = []int32{
-	0,  // 0: repo.RepoSource.gh:type_name -> repo.GithubRepo
-	4,  // 1: repo.RepoSource.path:type_name -> repo.RepoPath
-	1,  // 2: repo.Repo.source:type_name -> repo.RepoSource
-	2,  // 3: repo.RepoList.repos:type_name -> repo.Repo
-	2,  // 4: repo.RepoMsg.repo:type_name -> repo.Repo
-	5,  // 5: repo.RepoMsg.stdout:type_name -> repo.RepoLogs
-	5,  // 6: repo.RepoMsg.stderr:type_name -> repo.RepoLogs
-	3,  // 7: repo.MultiRepoZip.repos:type_name -> repo.RepoList
-	3,  // 8: repo.Importer.Download:input_type -> repo.RepoList
-	3,  // 9: repo.Importer.Clone:input_type -> repo.RepoList
-	3,  // 10: repo.Importer.Where:input_type -> repo.RepoList
-	3,  // 11: repo.Importer.Pull:input_type -> repo.RepoList
-	3,  // 12: repo.Importer.Zip:input_type -> repo.RepoList
-	6,  // 13: repo.Importer.Download:output_type -> repo.RepoMsg
-	6,  // 14: repo.Importer.Clone:output_type -> repo.RepoMsg
-	4,  // 15: repo.Importer.Where:output_type -> repo.RepoPath
-	6,  // 16: repo.Importer.Pull:output_type -> repo.RepoMsg
-	7,  // 17: repo.Importer.Zip:output_type -> repo.MultiRepoZip
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	2,  // 0: repo.GithubOwner.options:type_name -> repo.GithubOptions
+	0,  // 1: repo.RepoSource.gh:type_name -> repo.GithubRepo
+	6,  // 2: repo.RepoSource.path:type_name -> repo.RepoPath
+	1,  // 3: repo.RepoSource.gh_owner:type_name -> repo.GithubOwner
+	3,  // 4: repo.Repo.source:type_name -> repo.RepoSource
+	4,  // 5: repo.RepoList.repos:type_name -> repo.Repo
+	4,  // 6: repo.RepoMsg.repo:type_name -> repo.Repo
+	7,  // 7: repo.RepoMsg.stdout:type_name -> repo.RepoLogs
+	7,  // 8: repo.RepoMsg.stderr:type_name -> repo.RepoLogs
+	5,  // 9: repo.MultiRepoZip.repos:type_name -> repo.RepoList
+	5,  // 10: repo.Importer.Download:input_type -> repo.RepoList
+	5,  // 11: repo.Importer.Clone:input_type -> repo.RepoList
+	5,  // 12: repo.Importer.Where:input_type -> repo.RepoList
+	5,  // 13: repo.Importer.Pull:input_type -> repo.RepoList
+	5,  // 14: repo.Importer.Zip:input_type -> repo.RepoList
+	8,  // 15: repo.Importer.Download:output_type -> repo.RepoMsg
+	8,  // 16: repo.Importer.Clone:output_type -> repo.RepoMsg
+	6,  // 17: repo.Importer.Where:output_type -> repo.RepoPath
+	8,  // 18: repo.Importer.Pull:output_type -> repo.RepoMsg
+	9,  // 19: repo.Importer.Zip:output_type -> repo.MultiRepoZip
+	15, // [15:20] is the sub-list for method output_type
+	10, // [10:15] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_repo_proto_init() }
@@ -601,10 +739,11 @@ func file_repo_proto_init() {
 	if File_repo_proto != nil {
 		return
 	}
-	file_repo_proto_msgTypes[1].OneofWrappers = []any{
+	file_repo_proto_msgTypes[3].OneofWrappers = []any{
 		(*RepoSource_Uri)(nil),
 		(*RepoSource_Gh)(nil),
 		(*RepoSource_Path)(nil),
+		(*RepoSource_GhOwner)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -612,7 +751,7 @@ func file_repo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_repo_proto_rawDesc), len(file_repo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

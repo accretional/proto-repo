@@ -10,11 +10,29 @@ message GithubRepo {
   string name = 2;
 }
 
+// GithubOwner identifies a GitHub user or organization login. As a RepoSource
+// it's a request for every repo under that owner; the Importer expands it
+// server-side by calling the GitHub API before any clone/pull happens.
+// Callers who just want "all repos for <name>" can leave options unset.
+message GithubOwner {
+  string owner = 1;
+  GithubOptions options = 2;
+}
+
+// GithubOptions filter which repos a GithubOwner expands to. Both flags
+// default to excluded — typical callers want neither forks nor archived
+// projects in their set.
+message GithubOptions {
+  bool include_forks = 1;
+  bool include_archived = 2;
+}
+
 message RepoSource {
   oneof source {
     string uri = 1;
     GithubRepo gh = 2;
     RepoPath path = 3;
+    GithubOwner gh_owner = 4;
   }
 }
 

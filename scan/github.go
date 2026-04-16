@@ -19,6 +19,8 @@ type Repo struct {
 	CloneURL      string
 	DefaultBranch string
 	Private       bool
+	Fork          bool
+	Archived      bool
 }
 
 // GithubClient enumerates repos in a GitHub org or user account.
@@ -95,6 +97,8 @@ func (c *GithubClient) ListRepos(ctx context.Context, ownerOrOrg string) ([]Repo
 			FullName      string `json:"full_name"`
 			DefaultBranch string `json:"default_branch"`
 			Private       bool   `json:"private"`
+			Fork          bool   `json:"fork"`
+			Archived      bool   `json:"archived"`
 			CloneURL      string `json:"clone_url"`
 			Owner         struct {
 				Login string `json:"login"`
@@ -114,6 +118,8 @@ func (c *GithubClient) ListRepos(ctx context.Context, ownerOrOrg string) ([]Repo
 				CloneURL:      r.CloneURL,
 				DefaultBranch: r.DefaultBranch,
 				Private:       r.Private,
+				Fork:          r.Fork,
+				Archived:      r.Archived,
 			})
 		}
 	}

@@ -88,10 +88,16 @@ Every RPC takes a `Repo` whose `RepoSource` oneof is one of:
 - `uri` — clone URL; checkout lands in `<scratch>/<basename(uri)>`
 - `gh`  — `{owner, name}`; checkout lands in `<scratch>/<name>`
 - `path` — explicit local path; used as-is, never mkdir'd by Importer
+- `gh_owner` — a user or org login; **Importer only**. Expands server-side
+  to one entry per repo the owner has, filtered by `GithubOptions`
+  (forks/archived excluded by default). Uses the GitHub API's authoritative
+  `clone_url` so Enterprise hosts and SSH-preferred accounts work.
 
 `path` sources are what let you run SubCommands against a repo the daemon did
 not clone. `uri`/`gh` sources route through `<scratch-dir>` so the server can
-find them later (e.g. `Where` without stat).
+find them later (e.g. `Where` without stat). `gh_owner` is a request to
+"treat every repo in this account as an input" — any streaming RPC
+(Download/Clone/Pull/Where) emits N messages for one `gh_owner` input.
 
 ## Errors vs. gRPC errors
 
