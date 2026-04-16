@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/accretional/proto-repo/genpb"
 	"github.com/accretional/proto-repo/importer"
+	"github.com/accretional/proto-repo/subcommands"
 	"google.golang.org/grpc"
 )
 
@@ -27,6 +28,7 @@ func main() {
 	}
 	s := grpc.NewServer()
 	pb.RegisterImporterServer(s, importer.New(*scratchDir))
+	pb.RegisterSubCommandsServer(s, subcommands.New(*scratchDir))
 	log.Printf("importerd listening on %s (scratch=%s)", *addr, *scratchDir)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("serve: %v", err)

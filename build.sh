@@ -14,9 +14,10 @@ esac
 
 mkdir -p genpb
 protoc \
+  -I . \
   --go_out=. --go_opt=module=github.com/accretional/proto-repo \
   --go-grpc_out=. --go-grpc_opt=module=github.com/accretional/proto-repo \
-  repo.proto
+  repo.proto subcommands.proto
 
 # Generated stubs may have introduced new imports (grpc, etc.); resolve them.
 go mod tidy

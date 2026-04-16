@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package subcommands;
+
+import "repo.proto";
+
+// Generated alongside repo.pb.go in the same Go package so cross-references
+// between repo.* and subcommands.* messages stay un-imported.
+option go_package = "github.com/accretional/proto-repo/genpb";
+
+// SubCommandReq is the generic input for every SubCommands RPC: it identifies
+// the repo to operate inside and supplies extra positional/flag args that are
+// appended verbatim after the subcommand name. RPCs may apply a sensible
+// happy-path default when args is empty (e.g. Add → ".", Commit → -m commit).
+message SubCommandReq {
+  repo.Repo repo = 1;
+  repeated string args = 2;
+}
+
+// SubCommands wraps individual `git <subcommand>` invocations. Each RPC runs
+// `git <subcommand> <args...>` inside the request's resolved repo path and
+// returns a RepoMsg carrying captured stdout/stderr and any error string.
+service SubCommands {
+  rpc Add(SubCommandReq) returns (repo.RepoMsg);
+  rpc Archive(SubCommandReq) returns (repo.RepoMsg);
+  rpc Backfill(SubCommandReq) returns (repo.RepoMsg);
+  rpc Bisect(SubCommandReq) returns (repo.RepoMsg);
+  rpc Branch(SubCommandReq) returns (repo.RepoMsg);
+  rpc Bundle(SubCommandReq) returns (repo.RepoMsg);
+  rpc Checkout(SubCommandReq) returns (repo.RepoMsg);
+  rpc CherryPick(SubCommandReq) returns (repo.RepoMsg);
+  rpc Clean(SubCommandReq) returns (repo.RepoMsg);
+  rpc Commit(SubCommandReq) returns (repo.RepoMsg);
+  rpc Describe(SubCommandReq) returns (repo.RepoMsg);
+  rpc Diff(SubCommandReq) returns (repo.RepoMsg);
+  rpc Gc(SubCommandReq) returns (repo.RepoMsg);
+  rpc Init(SubCommandReq) returns (repo.RepoMsg);
+  rpc Log(SubCommandReq) returns (repo.RepoMsg);
+  rpc Maintenance(SubCommandReq) returns (repo.RepoMsg);
+  rpc Merge(SubCommandReq) returns (repo.RepoMsg);
+  rpc Mv(SubCommandReq) returns (repo.RepoMsg);
+  rpc Notes(SubCommandReq) returns (repo.RepoMsg);
+  rpc Push(SubCommandReq) returns (repo.RepoMsg);
+  rpc RangeDiff(SubCommandReq) returns (repo.RepoMsg);
+  rpc Rebase(SubCommandReq) returns (repo.RepoMsg);
+  rpc Reset(SubCommandReq) returns (repo.RepoMsg);
+  rpc Restore(SubCommandReq) returns (repo.RepoMsg);
+  rpc Revert(SubCommandReq) returns (repo.RepoMsg);
+  rpc Rm(SubCommandReq) returns (repo.RepoMsg);
+  rpc Shortlog(SubCommandReq) returns (repo.RepoMsg);
+  rpc Show(SubCommandReq) returns (repo.RepoMsg);
+  rpc SparseCheckout(SubCommandReq) returns (repo.RepoMsg);
+  rpc Stash(SubCommandReq) returns (repo.RepoMsg);
+  rpc Status(SubCommandReq) returns (repo.RepoMsg);
+  rpc Submodule(SubCommandReq) returns (repo.RepoMsg);
+  rpc Switch(SubCommandReq) returns (repo.RepoMsg);
+  rpc Tag(SubCommandReq) returns (repo.RepoMsg);
+  rpc Worktree(SubCommandReq) returns (repo.RepoMsg);
+}
