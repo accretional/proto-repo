@@ -22,6 +22,65 @@ setup.sh / build.sh / test.sh / LET_IT_RIP.sh
 Build scripts stack: `build → setup`, `test → build`, `LET_IT_RIP → test + run`.
 All four are idempotent.
 
+## Running
+
+```
+./LET_IT_RIP.sh importerd --addr :7777 --scratch-dir ./scratch
+```
+
+Starts `importerd`, which registers both the `Importer` and `SubCommands`
+services on a single gRPC listener. SIGINT/SIGTERM trigger `GracefulStop` so
+in-flight streams drain cleanly.
+
+## Two ways to call SubCommands
+
+`subcommands/` exposes every command twice:
+
+- **String-args RPCs** — `Add`, `Commit`, `Log`, … each take a
+  `SubCommandReq { Repo, repeated string args }` and shell out to
+  `git <cmd> args...`. Thin, fast to add, no type safety — the server
+  doesn't parse args.
+- **Structured RPC** — `Execute(Subcommand)` takes a typed `oneof args`
+  (`GitAddArguments`, `GitCommitArguments`, …) that the server compiles
+  to argv. Type-checked at the proto boundary; catches typos at compile
+  time for generated clients.
+
+Both paths funnel through the same `run` / `runClone` / `runMkdir` helpers,
+so behavior matches (Clean defaults to `--dry-run`, Pull defaults to
+`--ff-only`, Clone rejects path-source repos, etc.).
+
+## OptBool and friends
+
+Proto3 scalar booleans can't distinguish "unset" from "false", which matters
+for flags like `--[no-]tags`. Structured arguments use:
+
+- `OptBool { UNSPECIFIED | TRUE | FALSE }` — tri-state for `--flag` /
+  `--no-flag` / omit
+- `OptInt { int64 value }` wrapper — distinguishes unset from `0`
+- Dedicated enums (`FastForward`, `RecurseSubmodules`, …) for flags that
+  take a named value
+
+argv builders skip unspecified fields, so a zero-valued `GitXArguments{}`
+produces a bare `git x` invocation.
+
+## TODO: missing porcelain subcommands
+
+`docs/subcommand-urls.csv` lists the 46 commands linked from the main
+porcelain section of `https://git-scm.com/docs/git`. 38 are implemented in
+`subcommands/`; the rest are gaps or deliberate omissions:
+
+- `am` — apply mbox patches. Useful; not yet added.
+- `format-patch` — generate patches from commits. Useful; not yet added.
+- `grep` — git-aware grep across tracked files. Useful; not yet added.
+- `scalar` — Microsoft's partial-clone helper. Nice-to-have.
+- `citool`, `gui`, `gitk` — GUIs. Intentionally skipped (no sensible
+  gRPC surface).
+
+Adding one follows the same per-command shape as the existing 38: an
+`.proto` RPC + `GitFooArguments` message, a file under `subcommands/` for
+the string-args wrapper, an `argvFoo` builder in `structured.go`, and an
+Execute smoke test in `execute_test.go`.
+
 ## Repo identity
 
 Every RPC takes a `Repo` whose `RepoSource` oneof is one of:
