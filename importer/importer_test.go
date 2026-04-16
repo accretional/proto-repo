@@ -393,3 +393,216 @@ func TestWherePathSourceReturnsItself(t *testing.T) {
 	}
 }
 
+func ghRepo(owner, name string) *pb.Repo {
+	return &pb.Repo{Source: &pb.RepoSource{Source: &pb.RepoSource_Gh{Gh: &pb.GithubRepo{Owner: owner, Name: name}}}}
+}
+
+// TestWhereGhSourceResolves exercises the gh-source branch of Resolve
+// without any network I/O — Where returns the on-disk path the clone
+// would land at, which is <scratch>/<name>.
+func TestWhereGhSourceResolves(t *testing.T) {
+	tmp := t.TempDir()
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := client.Where(ctx, &pb.RepoList{Repos: []*pb.Repo{ghRepo("octocat", "hello")}})
+	if err != nil {
+		t.Fatalf("Where: %v", err)
+	}
+	got, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("recv: %v", err)
+	}
+	want := filepath.Join(scratch, "hello")
+	if got.GetPath() != want {
+		t.Errorf("Where(gh) = %q, want %q", got.GetPath(), want)
+	}
+}
+
+// TestCloneOverExisting confirms that cloning twice is a no-op on the
+// second call (not an error, not a re-clone) — importer's clone() treats
+// an existing .git as "already cloned".
+func TestCloneOverExisting(t *testing.T) {
+	tmp := t.TempDir()
+	src := seedRepo(t, filepath.Join(tmp, "src"), "demo")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	repos := &pb.RepoList{Repos: []*pb.Repo{uriRepo("file://" + src)}}
+	for i := 0; i < 2; i++ {
+		stream, err := client.Clone(ctx, repos)
+		if err != nil {
+			t.Fatalf("Clone #%d: %v", i+1, err)
+		}
+		msgs := collectRepoMsgs(t, stream)
+		if len(msgs) != 1 || len(msgs[0].GetErrs()) > 0 {
+			t.Fatalf("Clone #%d errs: %+v", i+1, msgs)
+		}
+	}
+	got := runGit(t, filepath.Join(scratch, "demo"), "log", "--oneline")
+	if strings.Count(got, "\n") != 1 {
+		t.Errorf("expected 1 commit after double-clone, got log:\n%s", got)
+	}
+}
+
+// TestPullOnMissingCheckout verifies Pull returns a structured error when
+// the target path isn't a git checkout — it should not try to run git and
+// it should surface the condition via msg.Errs rather than a gRPC error.
+func TestPullOnMissingCheckout(t *testing.T) {
+	tmp := t.TempDir()
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	stream, err := client.Pull(ctx, &pb.RepoList{Repos: []*pb.Repo{uriRepo("file:///nonexistent/nope")}})
+	if err != nil {
+		t.Fatalf("Pull: %v", err)
+	}
+	msgs := collectRepoMsgs(t, stream)
+	if len(msgs) != 1 {
+		t.Fatalf("expected 1 msg, got %d", len(msgs))
+	}
+	errs := msgs[0].GetErrs()
+	if len(errs) == 0 {
+		t.Fatalf("expected error about missing checkout, got none")
+	}
+	if !strings.Contains(errs[0], "not a git checkout") {
+		t.Errorf("error = %q, want substring %q", errs[0], "not a git checkout")
+	}
+}
+
+// TestZipWithPathSource verifies Zip treats path-source repos like
+// already-present checkouts: files get archived under the basename,
+// .git is skipped.
+func TestZipWithPathSource(t *testing.T) {
+	tmp := t.TempDir()
+	src := seedRepo(t, filepath.Join(tmp, "src"), "demo")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	mz, err := client.Zip(ctx, &pb.RepoList{Repos: []*pb.Repo{pathRepo(src)}})
+	if err != nil {
+		t.Fatalf("Zip: %v", err)
+	}
+	if mz.GetNumFiles() < 1 {
+		t.Errorf("NumFiles = %d, want >= 1", mz.GetNumFiles())
+	}
+	zr, err := zip.OpenReader(mz.GetPath())
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer zr.Close()
+	var hasHello bool
+	for _, f := range zr.File {
+		if f.Name == "demo/hello.txt" {
+			hasHello = true
+		}
+		if strings.HasPrefix(f.Name, "demo/.git") {
+			t.Errorf("zip should skip .git, contains %q", f.Name)
+		}
+	}
+	if !hasHello {
+		t.Errorf("zip missing demo/hello.txt")
+	}
+}
+
+// TestMultiRepoStreams confirms every streaming RPC emits one message per
+// input Repo, in order — the current code iterates req.GetRepos() and sends
+// per-repo, but nothing guarded against a regression to batch-mode.
+func TestMultiRepoStreams(t *testing.T) {
+	tmp := t.TempDir()
+	srcA := seedRepo(t, filepath.Join(tmp, "src"), "alpha")
+	srcB := seedRepo(t, filepath.Join(tmp, "src"), "beta")
+	scratch := filepath.Join(tmp, "scratch")
+	client, stop := startServer(t, scratch)
+	defer stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	repos := &pb.RepoList{Repos: []*pb.Repo{
+		uriRepo("file://" + srcA),
+		uriRepo("file://" + srcB),
+	}}
+
+	cs, err := client.Clone(ctx, repos)
+	if err != nil {
+		t.Fatalf("Clone: %v", err)
+	}
+	cmsgs := collectRepoMsgs(t, cs)
+	if len(cmsgs) != 2 {
+		t.Fatalf("Clone msgs = %d, want 2", len(cmsgs))
+	}
+	for i, want := range []string{"alpha", "beta"} {
+		got := cmsgs[i].GetRepo().GetSource().GetUri()
+		if !strings.HasSuffix(got, "/"+want) {
+			t.Errorf("Clone msg[%d] uri = %q, want suffix %q", i, got, "/"+want)
+		}
+	}
+
+	ps, err := client.Pull(ctx, repos)
+	if err != nil {
+		t.Fatalf("Pull: %v", err)
+	}
+	pmsgs := collectRepoMsgs(t, ps)
+	if len(pmsgs) != 2 {
+		t.Fatalf("Pull msgs = %d, want 2", len(pmsgs))
+	}
+	for i, m := range pmsgs {
+		if len(m.GetErrs()) > 0 {
+			t.Errorf("Pull msg[%d] errs: %v", i, m.GetErrs())
+		}
+	}
+
+	ws, err := client.Where(ctx, repos)
+	if err != nil {
+		t.Fatalf("Where: %v", err)
+	}
+	var paths []string
+	for {
+		m, err := ws.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Where recv: %v", err)
+		}
+		paths = append(paths, m.GetPath())
+	}
+	if len(paths) != 2 {
+		t.Fatalf("Where paths = %d, want 2", len(paths))
+	}
+	if !strings.HasSuffix(paths[0], "/alpha") || !strings.HasSuffix(paths[1], "/beta") {
+		t.Errorf("Where order wrong: %v", paths)
+	}
+
+	mz, err := client.Zip(ctx, repos)
+	if err != nil {
+		t.Fatalf("Zip: %v", err)
+	}
+	zr, err := zip.OpenReader(mz.GetPath())
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	defer zr.Close()
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	for _, want := range []string{"alpha/hello.txt", "beta/hello.txt"} {
+		if !names[want] {
+			t.Errorf("zip missing %q (have %v)", want, names)
+		}
+	}
+}
+
