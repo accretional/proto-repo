@@ -17,7 +17,7 @@ protoc \
   -I . \
   --go_out=. --go_opt=module=github.com/accretional/proto-repo \
   --go-grpc_out=. --go-grpc_opt=module=github.com/accretional/proto-repo \
-  repo.proto subcommands.proto
+  repo.proto subcommands.proto flags.proto subcommand.proto
 
 # Generated stubs may have introduced new imports (grpc, etc.); resolve them.
 go mod tidy

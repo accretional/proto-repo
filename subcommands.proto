@@ -3,6 +3,7 @@ syntax = "proto3";
 package subcommands;
 
 import "repo.proto";
+import "subcommand.proto";
 
 // Generated alongside repo.pb.go in the same Go package so cross-references
 // between repo.* and subcommands.* messages stay un-imported.
@@ -21,6 +22,11 @@ message SubCommandReq {
 // `git <subcommand> <args...>` inside the request's resolved repo path and
 // returns a RepoMsg carrying captured stdout/stderr and any error string.
 service SubCommands {
+  // Execute dispatches on the Subcommand wrapper's args oneof, building the
+  // git argv from the typed fields. Equivalent to the per-subcommand RPCs
+  // below but callers don't have to know the shell-style arg format.
+  rpc Execute(Subcommand) returns (repo.RepoMsg);
+
   rpc Add(SubCommandReq) returns (repo.RepoMsg);
   rpc Archive(SubCommandReq) returns (repo.RepoMsg);
   rpc Backfill(SubCommandReq) returns (repo.RepoMsg);

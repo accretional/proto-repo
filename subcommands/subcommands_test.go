@@ -19,7 +19,11 @@ func startServer(t *testing.T, scratch string) (pb.SubCommandsClient, func()) {
 	t.Helper()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer()
-	pb.RegisterSubCommandsServer(srv, New(scratch))
+	s, err := New(scratch)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	pb.RegisterSubCommandsServer(srv, s)
 	go func() { _ = srv.Serve(lis) }()
 	conn, err := grpc.NewClient(
 		"passthrough:///bufnet",
@@ -141,6 +145,29 @@ func TestHappyPathWorkflow(t *testing.T) {
 		t.Fatalf("Diff: %v", err)
 	} else if len(dm.GetErrs()) > 0 {
 		t.Errorf("Diff errs: %v", dm.GetErrs())
+	}
+
+	// Show HEAD.
+	if sm, err := client.Show(ctx, &pb.SubCommandReq{Repo: r}); err != nil {
+		t.Fatalf("Show: %v", err)
+	} else if len(sm.GetErrs()) > 0 {
+		t.Errorf("Show errs: %v", sm.GetErrs())
+	} else if !linesContain(sm.GetStdout().GetLine(), "commit") {
+		t.Errorf("Show stdout missing 'commit': %v", sm.GetStdout().GetLine())
+	}
+
+	// Stash list on an empty stash.
+	if sm, err := client.Stash(ctx, &pb.SubCommandReq{Repo: r, Args: []string{"list"}}); err != nil {
+		t.Fatalf("Stash list: %v", err)
+	} else if len(sm.GetErrs()) > 0 {
+		t.Errorf("Stash errs: %v", sm.GetErrs())
+	}
+
+	// Gc on a tiny repo — should succeed quickly.
+	if gm, err := client.Gc(ctx, &pb.SubCommandReq{Repo: r, Args: []string{"--quiet"}}); err != nil {
+		t.Fatalf("Gc: %v", err)
+	} else if len(gm.GetErrs()) > 0 {
+		t.Errorf("Gc errs: %v", gm.GetErrs())
 	}
 }
 

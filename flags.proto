@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+// Shared flag types for the structured git Subcommand request messages in
+// subcommand.proto. Per-command arg messages reuse these so that common
+// options (--quiet, --verbose, pathspecs, commit-message source, gpg-sign,
+// fast-forward mode, etc.) are spelled the same way everywhere.
+package subcommands;
+
+option go_package = "github.com/accretional/proto-repo/genpb";
+
+// OptBool represents a CLI flag that can be explicitly on (--foo), explicitly
+// off (--no-foo), or unset (let git decide). proto3 bool defaults to false
+// which loses the unset/explicit-false distinction, so we use an enum.
+enum OptBool {
+  OPT_BOOL_UNSPECIFIED = 0;
+  OPT_BOOL_TRUE = 1;   // --foo
+  OPT_BOOL_FALSE = 2;  // --no-foo
+}
+
+// Fast-forward control for merge/pull/rebase.
+enum FastForward {
+  FAST_FORWARD_UNSPECIFIED = 0;
+  FAST_FORWARD_ALLOW = 1;  // --ff (default)
+  FAST_FORWARD_NEVER = 2;  // --no-ff
+  FAST_FORWARD_ONLY = 3;   // --ff-only
+}
+
+// `git add --chmod=(+|-)x`.
+enum ChmodExecutable {
+  CHMOD_EXECUTABLE_UNSPECIFIED = 0;
+  CHMOD_EXECUTABLE_ADD = 1;     // +x
+  CHMOD_EXECUTABLE_REMOVE = 2;  // -x
+}
+
+// `git commit -u[<mode>]` / `git status -u<mode>`.
+enum UntrackedFilesMode {
+  UNTRACKED_FILES_MODE_UNSPECIFIED = 0;
+  UNTRACKED_FILES_MODE_NO = 1;
+  UNTRACKED_FILES_MODE_NORMAL = 2;
+  UNTRACKED_FILES_MODE_ALL = 3;
+}
+
+// `git status --ignored[=<mode>]`.
+enum IgnoredMode {
+  IGNORED_MODE_UNSPECIFIED = 0;
+  IGNORED_MODE_TRADITIONAL = 1;
+  IGNORED_MODE_MATCHING = 2;
+  IGNORED_MODE_NO = 3;
+}
+
+// `git status --short|--long|--porcelain[=<v>]`.
+enum StatusFormat {
+  STATUS_FORMAT_UNSPECIFIED = 0;
+  STATUS_FORMAT_LONG = 1;
+  STATUS_FORMAT_SHORT = 2;
+  STATUS_FORMAT_PORCELAIN_V1 = 3;
+  STATUS_FORMAT_PORCELAIN_V2 = 4;
+}
+
+// `git log`/`git show` style --decorate[=short|full|auto|no].
+enum Decorate {
+  DECORATE_UNSPECIFIED = 0;
+  DECORATE_SHORT = 1;
+  DECORATE_FULL = 2;
+  DECORATE_AUTO = 3;
+  DECORATE_NO = 4;
+}
+
+// `--color[=<when>]` shared by branch/log/diff/etc.
+enum ColorWhen {
+  COLOR_WHEN_UNSPECIFIED = 0;
+  COLOR_WHEN_ALWAYS = 1;
+  COLOR_WHEN_NEVER = 2;
+  COLOR_WHEN_AUTO = 3;
+}
+
+// `git branch --track[=(direct|inherit)]`.
+enum BranchTrackMode {
+  BRANCH_TRACK_MODE_UNSPECIFIED = 0;
+  BRANCH_TRACK_MODE_DIRECT = 1;
+  BRANCH_TRACK_MODE_INHERIT = 2;
+  BRANCH_TRACK_MODE_NO = 3;  // --no-track
+}
+
+// `--recurse-submodules[=<mode>]`.
+enum RecurseSubmodules {
+  RECURSE_SUBMODULES_UNSPECIFIED = 0;
+  RECURSE_SUBMODULES_NO = 1;
+  RECURSE_SUBMODULES_YES = 2;
+  RECURSE_SUBMODULES_ON_DEMAND = 3;
+  RECURSE_SUBMODULES_CHECK = 4;
+  RECURSE_SUBMODULES_ONLY = 5;
+}
+
+// Pathspec group: positional pathspecs plus the optional file-based source.
+// Used wherever the git CLI ends with `[--] [<pathspec>...]` and accepts
+// --pathspec-from-file / --pathspec-file-nul.
+message Pathspec {
+  repeated string pathspec = 1;
+  // Absolute/relative path to a file whose contents are pathspec entries.
+  string pathspec_from_file = 2;
+  // Only valid with pathspec_from_file; separates entries by NUL instead of LF.
+  OptBool pathspec_file_nul = 3;
+}
+
+// Commit message source: -m, -F, -C, -c, --squash, --fixup. At most one is
+// meaningful per invocation; the server defers semantic validation to git.
+message MessageSource {
+  // -m / --message (repeated is legal — git concatenates as paragraphs).
+  repeated string message = 1;
+  // -F / --file <file>
+  string file = 2;
+  // -C / --reuse-message <commit>
+  string reuse_message = 3;
+  // -c / --reedit-message <commit>
+  string reedit_message = 4;
+  // --squash <commit>
+  string squash = 5;
+  // --fixup [(amend|reword):]<commit>
+  string fixup = 6;
+  // -t / --template <file>
+  string template = 7;
+}
+
+// GPG-sign option: -S[<keyid>] / --gpg-sign[=<keyid>] or --no-gpg-sign.
+message GpgSign {
+  // UNSPECIFIED = don't pass a flag; TRUE = sign; FALSE = --no-gpg-sign.
+  OptBool sign = 1;
+  // Optional key id (only meaningful when sign == TRUE).
+  string key_id = 2;
+}
+
+// Identity override: --author=<author>, --date=<date>. Commit/rebase/etc.
+message IdentityOverride {
+  string author = 1;
+  string date = 2;
+}
+
+// OptInt is the int counterpart of OptBool: distinguishes "unset" from any
+// explicit numeric value (including 0). Used for flags like --unified=<n>,
+// --abbrev=<n>, --inter-hunk-context=<n>, -l<num> where 0 is a legal value.
+message OptInt {
+  bool present = 1;
+  int32 value = 2;
+}
+
+// DiffFormatting is the full set of options shared by every command that
+// renders a diff (git diff, git log, git show, git format-patch, etc.). Pull
+// this into an arg message to get every formatting knob in one place.
+//
+// Source: `git diff --help` OPTIONS section (git 2.39). Every flag listed
+// there — including the niche whitespace / rename-detection / dirstat knobs
+// — is represented below. Flags that take a value are `string` (empty =
+// unset) unless 0 is a legal numeric value, in which case they use OptInt.
+message DiffFormatting {
+  // ---- Output shape ------------------------------------------------------
+  OptBool patch = 1;              // -p / -u / --patch
+  OptBool no_patch = 2;           // -s / --no-patch
+  OptInt unified = 3;             // -U<n> / --unified=<n>
+  string output = 4;              // --output=<file>
+  string output_indicator_new = 5;     // --output-indicator-new=<char>
+  string output_indicator_old = 6;     // --output-indicator-old=<char>
+  string output_indicator_context = 7; // --output-indicator-context=<char>
+  OptBool raw = 8;                // --raw
+  OptBool patch_with_raw = 9;     // --patch-with-raw
+
+  // ---- Algorithm ---------------------------------------------------------
+  OptBool indent_heuristic = 10;  // --[no-]indent-heuristic
+  OptBool minimal = 11;           // --minimal
+  OptBool patience = 12;          // --patience
+  OptBool histogram = 13;         // --histogram
+  repeated string anchored = 14;  // --anchored=<text> (repeatable)
+  string diff_algorithm = 15;     // --diff-algorithm={patience|minimal|histogram|myers}
+
+  // ---- Stat / summary variants ------------------------------------------
+  OptBool stat = 16;              // --stat (flag only)
+  string stat_spec = 17;          // optional "=<width>[,<name-width>[,<count>]]"
+  OptInt stat_width = 18;         // --stat-width=<n>
+  OptInt stat_name_width = 19;    // --stat-name-width=<n>
+  OptInt stat_count = 20;         // --stat-count=<n>
+  OptBool compact_summary = 21;   // --compact-summary
+  OptBool numstat = 22;           // --numstat
+  OptBool shortstat = 23;         // --shortstat
+  OptBool dirstat = 24;           // -X / --dirstat (flag only)
+  string dirstat_params = 25;     // optional "=<param1,param2,...>"
+  OptBool cumulative = 26;        // --cumulative
+  OptBool dirstat_by_file = 27;   // --dirstat-by-file (flag only)
+  string dirstat_by_file_params = 28;  // optional params
+  OptBool summary = 29;           // --summary
+  OptBool patch_with_stat = 30;   // --patch-with-stat
+  OptBool z = 31;                 // -z
+  OptBool name_only = 32;         // --name-only
+  OptBool name_status = 33;       // --name-status
+  OptBool submodule = 34;         // --submodule (flag only)
+  string submodule_format = 35;   // --submodule=<format>
+
+  // ---- Color / word-diff ------------------------------------------------
+  ColorWhen color = 36;           // --color[=<when>] (ALWAYS/NEVER/AUTO)
+  OptBool color_flag = 37;        // plain --color (no =<when>)
+  OptBool no_color = 38;          // --no-color (redundant with color=NEVER)
+  OptBool color_moved = 39;       // --color-moved flag only
+  string color_moved_mode = 40;   // --color-moved=<mode>
+  OptBool no_color_moved = 41;    // --no-color-moved
+  string color_moved_ws = 42;     // --color-moved-ws=<modes>
+  OptBool no_color_moved_ws = 43; // --no-color-moved-ws
+  OptBool word_diff = 44;         // --word-diff flag only
+  string word_diff_mode = 45;     // --word-diff=<mode>
+  string word_diff_regex = 46;    // --word-diff-regex=<regex>
+  OptBool color_words = 47;       // --color-words flag only
+  string color_words_regex = 48;  // --color-words=<regex>
+
+  // ---- Rename / copy detection / rewrite --------------------------------
+  OptBool no_renames = 49;        // --no-renames
+  OptBool rename_empty = 50;      // --[no-]rename-empty
+  OptBool check = 51;             // --check
+  string ws_error_highlight = 52; // --ws-error-highlight=<kind>
+  OptBool full_index = 53;        // --full-index
+  OptBool binary = 54;            // --binary
+  OptInt abbrev = 55;             // --abbrev[=<n>]
+  OptBool no_abbrev = 56;         // --no-abbrev
+  string break_rewrites = 57;     // -B[<n>][/<m>] / --break-rewrites — passed as raw spec
+  string find_renames = 58;       // -M[<n>] / --find-renames[=<n>]
+  string find_copies = 59;        // -C[<n>] / --find-copies[=<n>]
+  OptBool find_copies_harder = 60;
+  OptBool irreversible_delete = 61;   // -D
+  OptInt rename_limit = 62;       // -l<num>
+  string diff_filter = 63;        // --diff-filter=<filter>
+  string pickaxe_s = 64;          // -S<string>
+  string pickaxe_g = 65;          // -G<regex>
+  string find_object = 66;        // --find-object=<oid>
+  OptBool pickaxe_all = 67;
+  OptBool pickaxe_regex = 68;
+  string orderfile = 69;          // -O<orderfile>
+  string skip_to = 70;             // --skip-to=<file>
+  string rotate_to = 71;           // --rotate-to=<file>
+  OptBool reverse = 72;           // -R
+
+  // ---- Path / relative --------------------------------------------------
+  OptBool relative = 73;          // --relative (flag only)
+  string relative_path = 74;      // --relative=<path>
+  OptBool no_relative = 75;       // --no-relative
+
+  // ---- Whitespace -------------------------------------------------------
+  OptBool text = 76;              // -a / --text
+  OptBool ignore_cr_at_eol = 77;
+  OptBool ignore_space_at_eol = 78;
+  OptBool ignore_space_change = 79;  // -b
+  OptBool ignore_all_space = 80;     // -w
+  OptBool ignore_blank_lines = 81;
+  repeated string ignore_matching_lines = 82;  // -I<regex> / --ignore-matching-lines=<regex>
+  OptInt inter_hunk_context = 83;    // --inter-hunk-context=<n>
+  OptBool function_context = 84;     // -W
+
+  // ---- Exit / external / textconv ---------------------------------------
+  OptBool exit_code = 85;
+  OptBool quiet = 86;                // --quiet
+  OptBool ext_diff = 87;             // --ext-diff
+  OptBool no_ext_diff = 88;
+  OptBool textconv = 89;             // --[no-]textconv
+
+  // ---- Submodules / prefixes --------------------------------------------
+  OptBool ignore_submodules = 90;    // --ignore-submodules (flag only)
+  string ignore_submodules_when = 91; // --ignore-submodules=<when>
+  string src_prefix = 92;
+  string dst_prefix = 93;
+  OptBool no_prefix = 94;
+  string line_prefix = 95;
+  OptBool ita_invisible_in_index = 96;
+  OptBool ita_visible_in_index = 97;  // --ita-visible-in-index
+}

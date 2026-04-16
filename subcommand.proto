@@ -1,0 +1,1186 @@
+syntax = "proto3";
+
+// Structured request messages for each git porcelain subcommand. The older
+// subcommands.proto exposes a "repeated string args" passthrough; this file
+// encodes each subcommand's CLI flags as typed fields so callers build
+// requests without shell-string formatting. The wrapper Subcommand message
+// carries the enum identifying the subcommand plus a oneof selecting the
+// matching arg message.
+package subcommands;
+
+import "flags.proto";
+import "repo.proto";
+
+option go_package = "github.com/accretional/proto-repo/genpb";
+
+// Subcommand is the top-level structured request: repo + which subcommand +
+// its typed arguments. `type` is redundant with the oneof case but lets
+// routers dispatch without a oneof switch.
+message Subcommand {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_ADD = 1;
+    TYPE_ARCHIVE = 2;
+    TYPE_BACKFILL = 3;
+    TYPE_BISECT = 4;
+    TYPE_BRANCH = 5;
+    TYPE_BUNDLE = 6;
+    TYPE_CHECKOUT = 7;
+    TYPE_CHERRY_PICK = 8;
+    TYPE_CLEAN = 9;
+    TYPE_COMMIT = 10;
+    TYPE_DESCRIBE = 11;
+    TYPE_DIFF = 12;
+    TYPE_GC = 13;
+    TYPE_INIT = 14;
+    TYPE_LOG = 15;
+    TYPE_MAINTENANCE = 16;
+    TYPE_MERGE = 17;
+    TYPE_MV = 18;
+    TYPE_NOTES = 19;
+    TYPE_PUSH = 20;
+    TYPE_RANGE_DIFF = 21;
+    TYPE_REBASE = 22;
+    TYPE_RESET = 23;
+    TYPE_RESTORE = 24;
+    TYPE_REVERT = 25;
+    TYPE_RM = 26;
+    TYPE_SHORTLOG = 27;
+    TYPE_SHOW = 28;
+    TYPE_SPARSE_CHECKOUT = 29;
+    TYPE_STASH = 30;
+    TYPE_STATUS = 31;
+    TYPE_SUBMODULE = 32;
+    TYPE_SWITCH = 33;
+    TYPE_TAG = 34;
+    TYPE_WORKTREE = 35;
+  }
+
+  repo.Repo repo = 1;
+  Type type = 2;
+
+  oneof args {
+    GitAddArguments add = 10;
+    GitArchiveArguments archive = 11;
+    GitBackfillArguments backfill = 12;
+    GitBisectArguments bisect = 13;
+    GitBranchArguments branch = 14;
+    GitBundleArguments bundle = 15;
+    GitCheckoutArguments checkout = 16;
+    GitCherryPickArguments cherry_pick = 17;
+    GitCleanArguments clean = 18;
+    GitCommitArguments commit = 19;
+    GitDescribeArguments describe = 20;
+    GitDiffArguments diff = 21;
+    GitGcArguments gc = 22;
+    GitInitArguments init = 23;
+    GitLogArguments log = 24;
+    GitMaintenanceArguments maintenance = 25;
+    GitMergeArguments merge = 26;
+    GitMvArguments mv = 27;
+    GitNotesArguments notes = 28;
+    GitPushArguments push = 29;
+    GitRangeDiffArguments range_diff = 30;
+    GitRebaseArguments rebase = 31;
+    GitResetArguments reset = 32;
+    GitRestoreArguments restore = 33;
+    GitRevertArguments revert = 34;
+    GitRmArguments rm = 35;
+    GitShortlogArguments shortlog = 36;
+    GitShowArguments show = 37;
+    GitSparseCheckoutArguments sparse_checkout = 38;
+    GitStashArguments stash = 39;
+    GitStatusArguments status = 40;
+    GitSubmoduleArguments submodule = 41;
+    GitSwitchArguments switch = 42;
+    GitTagArguments tag = 43;
+    GitWorktreeArguments worktree = 44;
+  }
+}
+
+// ---- git add --------------------------------------------------------------
+// git add [--verbose|-v] [--dry-run|-n] [--force|-f] [--interactive|-i]
+//         [--patch|-p] [--edit|-e]
+//         [--[no-]all|-A | --[no-]ignore-removal | --update|-u]
+//         [--sparse] [--intent-to-add|-N] [--refresh] [--ignore-errors]
+//         [--ignore-missing] [--renormalize] [--chmod=(+|-)x]
+//         [--pathspec-from-file=<file> [--pathspec-file-nul]]
+//         [--] [<pathspec>...]
+message GitAddArguments {
+  OptBool verbose = 1;           // -v
+  OptBool dry_run = 2;           // -n
+  OptBool force = 3;             // -f (add ignored files)
+  OptBool interactive = 4;       // -i
+  OptBool patch = 5;             // -p
+  OptBool edit = 6;              // -e
+  OptBool all = 7;               // -A / --all / --no-all (== --ignore-removal)
+  OptBool ignore_removal = 8;    // alias of --no-all; kept for fidelity
+  OptBool update = 9;            // -u (only tracked)
+  OptBool sparse = 10;           // allow entries outside sparse-checkout cone
+  OptBool intent_to_add = 11;    // -N
+  OptBool refresh = 12;          // --refresh
+  OptBool ignore_errors = 13;    // --ignore-errors
+  OptBool ignore_missing = 14;   // --ignore-missing (dry-run only)
+  OptBool renormalize = 15;      // --renormalize (implies -u)
+  ChmodExecutable chmod = 16;    // --chmod=+x / -x
+  Pathspec pathspec = 17;
+}
+
+// ---- git archive ----------------------------------------------------------
+// git archive [--format=<fmt>] [--list] [--prefix=<prefix>/] [-o <file>]
+//             [--worktree-attributes] [--remote=<repo>] [--exec=<cmd>]
+//             [--add-file=<file>]... [--add-virtual-file=<path>:<content>]...
+//             [-<digit>] [<extra>]... <tree-ish> [<path>...]
+message GitArchiveArguments {
+  string format = 1;                  // --format=<fmt>
+  OptBool list = 2;                   // --list
+  string prefix = 3;                  // --prefix=<prefix>/
+  string output = 4;                  // -o / --output=<file>
+  OptBool worktree_attributes = 5;    // --worktree-attributes
+  OptBool verbose = 6;                // -v
+  string remote = 7;                  // --remote=<repo>
+  string exec = 8;                    // --exec=<cmd>
+  repeated string add_file = 9;       // --add-file=<file>
+  repeated string add_virtual_file = 10;  // --add-virtual-file=<path>:<content>
+  // --mtime=<time>
+  string mtime = 11;
+  // Compression level 0..9 (-0..-9); 0 = unset.
+  int32 compression_level = 12;
+  // tree-ish is required.
+  string tree_ish = 13;
+  repeated string path = 14;
+  // Backend-specific trailing flags (passed verbatim between tree-ish and --).
+  repeated string extra = 15;
+}
+
+// ---- git backfill ---------------------------------------------------------
+// git backfill [--batch-size=<n>] [--[no-]sparse]
+message GitBackfillArguments {
+  int64 batch_size = 1;   // --batch-size=<n>
+  OptBool sparse = 2;     // --[no-]sparse
+}
+
+// ---- git bisect -----------------------------------------------------------
+// Verb-based CLI. One arg message per verb keeps the typed layer honest.
+message GitBisectArguments {
+  oneof verb {
+    BisectStart start = 1;
+    BisectMark bad = 2;              // bad / new
+    BisectMark good = 3;             // good / old
+    BisectSkip skip = 4;
+    BisectTerms terms = 5;
+    BisectReset reset = 6;
+    BisectReplay replay = 7;
+    BisectRun run = 8;
+    BisectLog log = 9;               // no args
+    BisectNext next = 10;            // no args
+    BisectVisualize visualize = 11;  // no args (verb: visualize|view)
+    BisectHelp help = 12;            // no args
+  }
+}
+message BisectStart {
+  string term_new = 1;         // --term-new=<term> / --term-bad=<term>
+  string term_old = 2;         // --term-old=<term> / --term-good=<term>
+  OptBool no_checkout = 3;     // --no-checkout
+  OptBool first_parent = 4;    // --first-parent
+  string bad = 5;              // optional initial bad/new rev
+  repeated string good = 6;    // optional initial good/old revs
+  Pathspec pathspec = 7;
+}
+message BisectMark {
+  // Use the configured "new/bad" or "old/good" term if left empty.
+  string rev = 1;
+  repeated string extra_revs = 2;  // good/old accepts multiple
+}
+message BisectSkip {
+  repeated string revs = 1;  // individual revs or A..B ranges
+}
+message BisectTerms {
+  OptBool term_good = 1;  // --term-good
+  OptBool term_bad = 2;   // --term-bad
+}
+message BisectReset {
+  string commit = 1;  // optional
+}
+message BisectReplay {
+  string logfile = 1;
+}
+message BisectRun {
+  repeated string command = 1;  // argv
+}
+message BisectLog {}
+message BisectNext {}
+message BisectVisualize {}
+message BisectHelp {}
+
+// ---- git branch -----------------------------------------------------------
+// git branch [<options>] [-r|-a] [--merged] [--no-merged]
+//    or: git branch [<options>] [-f] [--recurse-submodules] <branch-name> [<start-point>]
+//    or: git branch [<options>] [-l] [<pattern>...]
+//    or: git branch [<options>] [-r] (-d|-D) <branch-name>...
+//    or: git branch [<options>] (-m|-M) [<old-branch>] <new-branch>
+//    or: git branch [<options>] (-c|-C) [<old-branch>] <new-branch>
+message GitBranchArguments {
+  // Action selector for the mutually-exclusive verb modes.
+  enum Action {
+    ACTION_UNSPECIFIED = 0;  // list (default) or create
+    ACTION_LIST = 1;         // -l / --list
+    ACTION_DELETE = 2;       // -d / -D (force via force below)
+    ACTION_MOVE = 3;         // -m / -M
+    ACTION_COPY = 4;         // -c / -C
+    ACTION_EDIT_DESCRIPTION = 5;  // --edit-description
+    ACTION_SHOW_CURRENT = 6;      // --show-current
+  }
+  Action action = 1;
+
+  // Generic options
+  OptBool verbose = 2;                    // -v
+  OptBool quiet = 3;                      // -q
+  BranchTrackMode track = 4;              // -t / --track[=direct|inherit] / --no-track
+  string set_upstream_to = 5;             // -u <upstream>
+  OptBool unset_upstream = 6;             // --unset-upstream
+  ColorWhen color = 7;                    // --color[=<when>]
+  OptBool no_color = 8;                   // --no-color (kept separate for fidelity)
+  OptBool remotes = 9;                    // -r
+  OptBool all = 10;                       // -a
+  string contains = 11;                   // --contains <commit>
+  string no_contains = 12;                // --no-contains <commit>
+  int32 abbrev = 13;                      // --abbrev=<n> (0 = --no-abbrev)
+  OptBool no_abbrev = 14;                 // --no-abbrev
+  string merged = 15;                     // --merged <commit>
+  string no_merged = 16;                  // --no-merged <commit>
+  string column = 17;                     // --column[=<style>]
+  string sort = 18;                       // --sort=<key>
+  string points_at = 19;                  // --points-at <object>
+  OptBool ignore_case = 20;               // -i
+  RecurseSubmodules recurse_submodules = 21;
+  string format = 22;                     // --format=<format>
+
+  // Action-specific
+  OptBool force = 23;                     // -f (also inferred from -D/-M/-C)
+  OptBool create_reflog = 24;             // --create-reflog
+
+  // Positional payload — interpretation depends on `action`.
+  // List mode: patterns; Delete mode: branch names; Move/Copy: [old] new.
+  repeated string names = 25;
+  string start_point = 26;                // create mode only
+}
+
+// ---- git bundle -----------------------------------------------------------
+message GitBundleArguments {
+  oneof verb {
+    BundleCreate create = 1;
+    BundleVerify verify = 2;
+    BundleListHeads list_heads = 3;
+    BundleUnbundle unbundle = 4;
+  }
+}
+message BundleCreate {
+  OptBool quiet = 1;
+  OptBool progress = 2;              // --progress / --no-progress
+  OptBool all_progress = 3;          // --all-progress
+  OptBool all_progress_implied = 4;  // --all-progress-implied
+  int32 version = 5;                 // --version=<n> (bundle format version)
+  string file = 6;                   // <file>
+  // git-rev-list-args (e.g. --all, HEAD, master, HEAD~10..HEAD)
+  repeated string rev_list_args = 7;
+}
+message BundleVerify {
+  OptBool quiet = 1;
+  string file = 2;
+}
+message BundleListHeads {
+  string file = 1;
+  repeated string refname = 2;
+}
+message BundleUnbundle {
+  OptBool progress = 1;
+  string file = 2;
+  repeated string refname = 3;
+}
+
+// ---- git checkout ---------------------------------------------------------
+// git checkout [-q] [-f] [-m] [<branch>]
+//   or: git checkout [-q] [-f] [-m] --detach [<branch>]
+//   or: git checkout [-q] [-f] [-m] [--detach] <commit>
+//   or: git checkout [-q] [-f] [-m] [-b|-B <new-branch>] [<start-point>]
+//   or: git checkout [-f|--ours|--theirs|-m|--conflict=<style>] [<tree-ish>] [--] [<pathspec>...]
+//   or: git checkout [-p|--patch] [<tree-ish>] [--] [<pathspec>...]
+message GitCheckoutArguments {
+  OptBool quiet = 1;         // -q
+  OptBool progress = 2;      // --progress / --no-progress
+  OptBool force = 3;         // -f
+  OptBool ours = 4;          // --ours
+  OptBool theirs = 5;        // --theirs
+  string new_branch = 6;     // -b <branch>
+  string new_branch_force = 7;  // -B <branch>
+  BranchTrackMode track = 8;
+  OptBool guess = 9;         // --[no-]guess
+  OptBool detach = 10;       // --detach
+  string orphan = 11;        // --orphan <new-branch>
+  OptBool ignore_skip_worktree_bits = 12;
+  OptBool merge = 13;        // -m (recreate conflicted merge)
+  string conflict_style = 14;  // --conflict=<style> (merge|diff3|zdiff3)
+  OptBool patch = 15;        // -p
+  RecurseSubmodules recurse_submodules = 16;
+  OptBool overlay = 17;      // --[no-]overlay
+  OptBool pathspec_file_nul = 18;
+  string pathspec_from_file = 19;
+  string start_point = 20;   // <start-point> / <tree-ish> / <branch>
+  Pathspec pathspec = 21;
+}
+
+// ---- git cherry-pick ------------------------------------------------------
+// git cherry-pick [--edit] [-n] [-m <parent-number>] [-s] [-x] [--ff]
+//                 [-S[<keyid>]] <commit>...
+// git cherry-pick (--continue | --skip | --abort | --quit)
+message GitCherryPickArguments {
+  enum Control {
+    CONTROL_UNSPECIFIED = 0;
+    CONTROL_CONTINUE = 1;
+    CONTROL_SKIP = 2;
+    CONTROL_ABORT = 3;
+    CONTROL_QUIT = 4;
+  }
+  Control control = 1;
+
+  OptBool edit = 2;                    // -e
+  string cleanup = 3;                  // --cleanup=<mode>
+  int32 mainline = 4;                  // -m <n>
+  OptBool no_commit = 5;               // -n
+  OptBool signoff = 6;                 // -s
+  GpgSign gpg_sign = 7;
+  OptBool fast_forward = 8;            // --ff
+  OptBool allow_empty = 9;
+  OptBool allow_empty_message = 10;
+  OptBool keep_redundant_commits = 11;
+  string strategy = 12;                // -s <strategy>
+  repeated string strategy_option = 13;  // -X <option>
+  string rerere_autoupdate = 14;       // --[no-]rerere-autoupdate (as enum-esque string)
+  OptBool reference = 15;              // --reference
+  OptBool x = 16;                      // -x (append (cherry picked from …))
+  repeated string commits = 17;
+}
+
+// ---- git clean ------------------------------------------------------------
+// git clean [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [-x|-X] [--] [<pathspec>...]
+message GitCleanArguments {
+  OptBool quiet = 1;         // -q
+  OptBool dry_run = 2;       // -n
+  OptBool force = 3;         // -f
+  OptBool interactive = 4;   // -i
+  OptBool directories = 5;   // -d
+  repeated string exclude = 6;  // -e <pattern>
+  OptBool include_ignored = 7;  // -x
+  OptBool only_ignored = 8;     // -X
+  Pathspec pathspec = 9;
+}
+
+// ---- git commit -----------------------------------------------------------
+message GitCommitArguments {
+  OptBool all = 1;                  // -a
+  OptBool patch = 2;                // -p
+  OptBool reset_author = 3;         // --reset-author
+  IdentityOverride identity = 4;    // --author / --date
+  MessageSource message = 5;        // -m / -F / -C / -c / --squash / --fixup
+  OptBool allow_empty = 6;
+  OptBool allow_empty_message = 7;
+  OptBool no_verify = 8;            // -n (bypass hooks)
+  OptBool edit = 9;                 // -e
+  string cleanup = 10;              // --cleanup=<mode>
+  OptBool amend = 11;               // --amend
+  OptBool no_post_rewrite = 12;     // --no-post-rewrite
+  repeated string trailers = 13;    // --trailer <token>[(=|:)<value>]
+  OptBool signoff = 14;             // -s
+  GpgSign gpg_sign = 15;
+  UntrackedFilesMode untracked_files = 16;  // -u[<mode>]
+  OptBool quiet = 17;
+  OptBool verbose = 18;
+  OptBool dry_run = 19;
+  StatusFormat status_format = 20;  // --short / --long / --porcelain
+  OptBool include_status = 21;      // --[no-]status
+  OptBool branch = 22;              // --branch
+  OptBool ahead_behind = 23;        // --[no-]ahead-behind
+  OptBool z = 24;                   // -z
+  OptBool include = 25;             // -i
+  OptBool only = 26;                // -o
+  Pathspec pathspec = 27;
+}
+
+// ---- git describe ---------------------------------------------------------
+// git describe [--all] [--tags] [--contains] [--abbrev=<n>] <commit-ish>...
+// git describe [--all] [--tags] [--contains] [--abbrev=<n>] --dirty[=<mark>]
+message GitDescribeArguments {
+  OptBool all = 1;
+  OptBool tags = 2;
+  OptBool contains = 3;
+  int32 abbrev = 4;                 // 0 disables abbrev; -1 = unset
+  bool abbrev_is_set = 5;           // distinguishes "--abbrev=0" from unset
+  int32 candidates = 6;             // --candidates=<n>
+  string dirty_mark = 7;            // --dirty[=<mark>] (empty = flag only)
+  OptBool dirty = 8;                // --dirty with no mark
+  string broken_mark = 9;           // --broken[=<mark>]
+  OptBool broken = 10;
+  OptBool exact_match = 11;         // --exact-match
+  OptBool debug = 12;
+  OptBool long = 13;                // --long
+  string match = 14;                // --match=<pattern> (repeatable via matches)
+  repeated string matches = 15;     // repeated --match
+  repeated string exclude = 16;     // --exclude=<pattern>
+  OptBool always = 17;              // --always
+  OptBool first_parent = 18;
+  repeated string commit_ish = 19;
+}
+
+// ---- git diff -------------------------------------------------------------
+// git diff [<options>] [<commit>] [--] [<path>...]
+//   or: git diff [<options>] --cached [--merge-base] [<commit>] [--] [<path>...]
+//   or: git diff [<options>] [--merge-base] <commit> [<commit>...] <commit> [--] [<path>...]
+//   or: git diff [<options>] <commit>...<commit> [--] [<path>...]
+//   or: git diff [<options>] <blob> <blob>
+//   or: git diff [<options>] --no-index [--] <path> <path>
+//
+// All formatting/algorithm/rename-detection flags live in DiffFormatting.
+// This message captures only the diff-selection flags that choose WHICH diff
+// to show.
+message GitDiffArguments {
+  DiffFormatting formatting = 1;
+
+  // Diff selection
+  OptBool cached = 2;               // --cached
+  OptBool staged = 3;               // --staged (alias)
+  OptBool merge_base = 4;           // --merge-base
+  OptBool no_index = 5;             // --no-index
+  OptBool index = 6;                // --index (cancel --no-index default)
+
+  // Conflict-resolution selectors when run during a merge.
+  OptBool base = 7;                 // -1 / --base
+  OptBool ours = 8;                 // -2 / --ours
+  OptBool theirs = 9;               // -3 / --theirs
+  OptBool combined_diff = 10;       // -0 (disable combined diff)
+
+  // Positional: zero-to-three commit-ish (or two blobs / two paths with
+  // --no-index). Interpretation follows git's rules.
+  repeated string commits = 11;
+
+  Pathspec pathspec = 12;
+}
+
+// ---- git gc ---------------------------------------------------------------
+message GitGcArguments {
+  OptBool aggressive = 1;
+  OptBool auto = 2;              // --auto
+  string prune = 3;              // --prune=<date> / "now"
+  OptBool no_prune = 4;
+  OptBool quiet = 5;
+  OptBool force = 6;
+  OptBool keep_largest_pack = 7; // --keep-largest-pack
+  OptBool cruft = 8;             // --[no-]cruft
+  string cruft_expiration = 9;
+}
+
+// ---- git init -------------------------------------------------------------
+// git init [-q|--quiet] [--bare] [--template=<tpl>] [--separate-git-dir=<git-dir>]
+//          [--object-format=<format>] [-b|--initial-branch=<branch>]
+//          [--shared[=<perms>]] [<directory>]
+message GitInitArguments {
+  OptBool quiet = 1;
+  OptBool bare = 2;
+  string template = 3;              // --template=<dir>
+  string separate_git_dir = 4;      // --separate-git-dir=<dir>
+  string object_format = 5;         // --object-format=<fmt>
+  string initial_branch = 6;        // -b / --initial-branch=<branch>
+  string shared = 7;                // --shared[=<perms>] (empty = flag only)
+  OptBool shared_flag = 8;          // --shared with no value
+  string directory = 9;             // optional positional
+}
+
+// ---- git log --------------------------------------------------------------
+// git log [<options>] [<revision-range>] [[--] <path>...]
+//
+// Log has the largest surface of any porcelain command: every diff flag
+// (via DiffFormatting), plus commit-limiting filters, ref selection, history
+// simplification, commit ordering, commit formatting, diff-merges handling,
+// and log-specific formatting (decorate, mailmap, -L).
+message GitLogArguments {
+  // All diff-rendering knobs.
+  DiffFormatting formatting = 1;
+
+  // ---- Commit limiting --------------------------------------------------
+  // -<number> / -n <n> / --max-count=<n>
+  OptInt max_count = 2;
+  OptInt skip = 3;                  // --skip=<n>
+  string since = 4;                 // --since=<date> / --after=<date>
+  string since_as_filter = 5;       // --since-as-filter=<date>
+  string until = 6;                 // --until=<date> / --before=<date>
+  string author = 7;                // --author=<pattern>
+  string committer = 8;             // --committer=<pattern>
+  string grep_reflog = 9;           // --grep-reflog=<pattern>
+  repeated string grep = 10;        // --grep=<pattern> (repeatable)
+  OptBool all_match = 11;           // --all-match
+  OptBool invert_grep = 12;         // --invert-grep
+  OptBool regexp_ignore_case = 13;  // -i / --regexp-ignore-case
+  OptBool basic_regexp = 14;        // --basic-regexp (default)
+  OptBool extended_regexp = 15;     // -E / --extended-regexp
+  OptBool fixed_strings = 16;       // -F / --fixed-strings
+  OptBool perl_regexp = 17;         // -P / --perl-regexp
+  OptBool remove_empty = 18;        // --remove-empty
+  OptBool merges = 19;              // --merges
+  OptBool no_merges = 20;           // --no-merges
+  OptInt min_parents = 21;          // --min-parents=<n>
+  OptInt max_parents = 22;          // --max-parents=<n>
+  OptBool no_min_parents = 23;      // --no-min-parents
+  OptBool no_max_parents = 24;      // --no-max-parents
+  OptBool first_parent = 25;        // --first-parent
+  OptBool exclude_first_parent_only = 26;
+  OptBool not = 27;                 // --not
+
+  // ---- Revision selection -----------------------------------------------
+  OptBool all = 28;                 // --all
+  OptBool branches = 29;            // --branches (flag only)
+  string branches_pattern = 30;     // --branches=<pattern>
+  OptBool tags = 31;                // --tags
+  string tags_pattern = 32;
+  OptBool remotes = 33;             // --remotes
+  string remotes_pattern = 34;
+  repeated string glob = 35;        // --glob=<glob-pattern>
+  repeated string exclude_ref = 36; // --exclude=<glob-pattern>
+  string exclude_hidden = 37;       // --exclude-hidden={receive|uploadpack}
+  OptBool reflog = 38;              // --reflog
+  OptBool alternate_refs = 39;
+  OptBool single_worktree = 40;
+  OptBool ignore_missing = 41;
+  OptBool bisect = 42;              // --bisect
+  OptBool stdin = 43;               // --stdin
+  OptBool cherry_mark = 44;
+  OptBool cherry_pick = 45;
+  OptBool left_only = 46;
+  OptBool right_only = 47;
+  OptBool cherry = 48;
+  OptBool walk_reflogs = 49;        // -g / --walk-reflogs
+  OptBool merge = 50;               // --merge (show commits touching files in conflict)
+  OptBool boundary = 51;
+
+  // ---- History simplification ------------------------------------------
+  OptBool simplify_by_decoration = 52;
+  OptBool show_pulls = 53;
+  OptBool full_history = 54;
+  OptBool dense = 55;
+  OptBool sparse = 56;
+  OptBool simplify_merges = 57;
+  OptBool ancestry_path = 58;       // --ancestry-path (flag only)
+  string ancestry_path_commit = 59; // --ancestry-path=<commit>
+
+  // ---- Ordering --------------------------------------------------------
+  OptBool date_order = 60;
+  OptBool author_date_order = 61;
+  OptBool topo_order = 62;
+  OptBool reverse = 63;             // --reverse (distinct from diff -R)
+  OptBool no_walk = 64;             // --no-walk (flag only)
+  string no_walk_mode = 65;         // --no-walk=(sorted|unsorted)
+  OptBool do_walk = 66;
+
+  // ---- Commit formatting -----------------------------------------------
+  string pretty = 67;               // --pretty[=<format>] / --format=<format>
+  OptBool pretty_flag = 68;         // --pretty with no value
+  OptBool abbrev_commit = 69;       // --abbrev-commit
+  OptBool no_abbrev_commit = 70;    // --no-abbrev-commit
+  OptBool oneline = 71;             // --oneline
+  string encoding = 72;             // --encoding=<encoding>
+  OptBool expand_tabs = 73;         // --expand-tabs (flag only)
+  OptInt expand_tabs_width = 74;    // --expand-tabs=<n>
+  OptBool no_expand_tabs = 75;      // --no-expand-tabs
+  OptBool notes = 76;               // --notes (flag only)
+  string notes_ref = 77;            // --notes=<ref>
+  OptBool no_notes = 78;            // --no-notes
+  OptBool show_notes = 79;          // --show-notes (flag only)
+  string show_notes_ref = 80;       // --show-notes=<ref>
+  OptBool standard_notes = 81;      // --[no-]standard-notes
+  OptBool show_signature = 82;
+  OptBool relative_date = 83;       // --relative-date (alias for --date=relative)
+  string date_format = 84;          // --date=<format>
+  OptBool parents = 85;             // --parents
+  OptBool children = 86;
+  OptBool left_right = 87;
+  OptBool graph = 88;               // --graph
+  OptBool show_linear_break = 89;   // --show-linear-break (flag only)
+  string show_linear_break_barrier = 90;  // --show-linear-break=<barrier>
+
+  // ---- Log-specific ----------------------------------------------------
+  OptBool follow = 91;              // --follow
+  OptBool no_decorate = 92;         // --no-decorate
+  Decorate decorate = 93;           // --decorate[=short|full|auto|no]
+  OptBool decorate_flag = 94;       // --decorate with no value
+  repeated string decorate_refs = 95;          // --decorate-refs=<pattern>
+  repeated string decorate_refs_exclude = 96;  // --decorate-refs-exclude=<pattern>
+  OptBool clear_decorations = 97;
+  OptBool source = 98;              // --source
+  OptBool mailmap = 99;             // --[no-]mailmap
+  OptBool use_mailmap = 100;        // --[no-]use-mailmap (alias)
+  OptBool full_diff = 101;
+  OptBool log_size = 102;
+  // -L<start>,<end>:<file> or -L:<funcname>:<file> — repeatable. Passed
+  // verbatim so range syntax (e.g. "10,20:src/file.c") round-trips exactly.
+  repeated string line_range = 103;
+
+  // ---- Diff-merges handling --------------------------------------------
+  string diff_merges = 104;         // --diff-merges=<mode>
+  OptBool no_diff_merges = 105;
+  OptBool combined_all_paths = 106;
+  OptBool dash_t = 107;             // -t (show tree entries)
+  OptBool dash_m = 108;             // -m (show merges as N-way diff)
+  OptBool dash_c = 109;             // -c (combined diff)
+  OptBool dash_cc = 110;            // --cc (dense combined)
+  OptBool remerge_diff = 111;       // --remerge-diff
+
+  // ---- Positional ------------------------------------------------------
+  repeated string revision_range = 112;  // HEAD~10..HEAD, --all (as positional), tag names, etc.
+  Pathspec pathspec = 113;
+}
+
+// ---- git maintenance ------------------------------------------------------
+message GitMaintenanceArguments {
+  enum Verb {
+    VERB_UNSPECIFIED = 0;
+    VERB_RUN = 1;
+    VERB_START = 2;
+    VERB_STOP = 3;
+    VERB_REGISTER = 4;
+    VERB_UNREGISTER = 5;
+  }
+  Verb verb = 1;
+
+  // run-specific
+  string schedule = 2;         // --schedule=<frequency>
+  repeated string task = 3;    // --task=<name> (repeatable)
+  OptBool quiet = 4;
+  OptBool auto = 5;
+  // register/unregister
+  string config_file = 6;      // --config-file=<path>
+  OptBool force = 7;           // --force (unregister)
+}
+
+// ---- git merge ------------------------------------------------------------
+message GitMergeArguments {
+  enum Control {
+    CONTROL_UNSPECIFIED = 0;
+    CONTROL_CONTINUE = 1;
+    CONTROL_ABORT = 2;
+    CONTROL_QUIT = 3;
+  }
+  Control control = 1;
+
+  FastForward fast_forward = 2;      // --ff / --no-ff / --ff-only
+  OptBool squash = 3;
+  OptBool commit = 4;                // --[no-]commit
+  OptBool edit = 5;                  // -e
+  OptBool verify_signatures = 6;
+  OptBool signoff = 7;
+  OptBool stat = 8;
+  OptBool progress = 9;
+  GpgSign gpg_sign = 10;
+  OptBool autostash = 11;            // --[no-]autostash
+  OptBool allow_unrelated_histories = 12;
+  OptBool rerere_autoupdate = 13;    // --[no-]rerere-autoupdate
+  OptBool overwrite_ignore = 14;     // --[no-]overwrite-ignore
+  repeated string strategy = 15;     // -s <strategy> (repeatable)
+  repeated string strategy_option = 16;  // -X <option>
+  MessageSource message = 17;        // -m / -F
+  string into_name = 18;             // --into-name <branch>
+  string log = 19;                   // --log[=<n>]
+  OptBool log_flag = 20;             // --log with no count
+  OptBool quiet = 21;
+  OptBool verbose = 22;
+  repeated string commits = 23;
+}
+
+// ---- git mv ---------------------------------------------------------------
+message GitMvArguments {
+  OptBool force = 1;          // -f
+  OptBool dry_run = 2;        // -n
+  OptBool skip_errors = 3;    // -k
+  OptBool verbose = 4;        // -v
+  OptBool sparse = 5;         // --sparse
+  repeated string sources = 6;
+  string destination = 7;
+}
+
+// ---- git notes ------------------------------------------------------------
+message GitNotesArguments {
+  enum Verb {
+    VERB_UNSPECIFIED = 0;
+    VERB_LIST = 1;
+    VERB_ADD = 2;
+    VERB_COPY = 3;
+    VERB_APPEND = 4;
+    VERB_EDIT = 5;
+    VERB_SHOW = 6;
+    VERB_MERGE = 7;
+    VERB_REMOVE = 8;
+    VERB_PRUNE = 9;
+    VERB_GET_REF = 10;
+  }
+  Verb verb = 1;
+
+  string ref = 2;                    // --ref=<ref>
+  OptBool force = 3;                 // -f
+  MessageSource message = 4;         // -m / -F / -C / -c
+  OptBool allow_empty = 5;
+  OptBool stripspace = 6;            // --[no-]stripspace
+  string strategy = 7;               // -s <strategy> (merge only)
+  OptBool ignore_missing = 8;        // remove --ignore-missing
+  string from_object = 9;            // copy
+  repeated string objects = 10;      // varies by verb
+  repeated string extra = 11;
+}
+
+// ---- git push -------------------------------------------------------------
+message GitPushArguments {
+  OptBool all = 1;                   // --all
+  OptBool prune = 2;                 // --prune
+  OptBool mirror = 3;                // --mirror
+  OptBool dry_run = 4;               // -n
+  OptBool porcelain = 5;
+  OptBool delete = 6;                // --delete
+  OptBool tags = 7;                  // --tags
+  OptBool follow_tags = 8;
+  string receive_pack = 9;           // --receive-pack=<path>
+  string repo = 10;                  // --repo=<repository>
+  OptBool force = 11;                // -f
+  string force_with_lease = 12;      // --force-with-lease[=<ref>[:<expect>]]
+  OptBool force_with_lease_flag = 13;
+  string force_if_includes = 14;     // --force-if-includes
+  RecurseSubmodules recurse_submodules = 15;
+  OptBool thin = 16;                 // --[no-]thin
+  OptBool atomic = 17;
+  OptBool signed = 18;               // --[no-]signed (alias --sign)
+  string signed_mode = 19;           // --signed=(true|false|if-asked)
+  OptBool verify = 20;               // --[no-]verify
+  OptBool set_upstream = 21;         // -u / --set-upstream
+  OptBool progress = 22;
+  OptBool verbose = 23;
+  OptBool quiet = 24;
+  repeated string push_option = 25;  // -o / --push-option=<option>
+  OptBool ipv4 = 26;                 // -4
+  OptBool ipv6 = 27;                 // -6
+  string repository = 28;            // positional repo
+  repeated string refspec = 29;
+}
+
+// ---- git range-diff -------------------------------------------------------
+message GitRangeDiffArguments {
+  OptBool creation_factor = 1;       // --creation-factor=<n> (approximated as bool+value)
+  int32 creation_factor_value = 2;
+  OptBool no_dual_color = 3;
+  string notes = 4;                  // --notes[=<ref>]
+  OptBool notes_flag = 5;
+  OptBool left_only = 6;
+  OptBool right_only = 7;
+  repeated string extra = 8;
+  // Positional: either "A..B C..D", "A...B", or "base A B".
+  repeated string ranges = 9;
+  Pathspec pathspec = 10;
+}
+
+// ---- git rebase -----------------------------------------------------------
+message GitRebaseArguments {
+  enum Control {
+    CONTROL_UNSPECIFIED = 0;
+    CONTROL_CONTINUE = 1;
+    CONTROL_SKIP = 2;
+    CONTROL_ABORT = 3;
+    CONTROL_QUIT = 4;
+    CONTROL_EDIT_TODO = 5;
+    CONTROL_SHOW_CURRENT_PATCH = 6;
+  }
+  Control control = 1;
+
+  OptBool interactive = 2;              // -i
+  OptBool root = 3;                     // --root
+  string onto = 4;                      // --onto=<newbase>
+  OptBool preserve_merges = 5;          // deprecated
+  OptBool rebase_merges = 6;            // -r / --rebase-merges
+  string rebase_merges_mode = 7;        // rebase-cousins|no-rebase-cousins
+  OptBool autosquash = 8;               // --[no-]autosquash
+  OptBool autostash = 9;
+  OptBool fork_point = 10;              // --[no-]fork-point
+  FastForward fast_forward = 11;        // --ff-only / --no-ff (merge rebase)
+  OptBool keep_empty = 12;              // --[no-]keep-empty
+  OptBool empty = 13;                   // --empty=(drop|keep|ask)
+  string empty_mode = 14;
+  OptBool no_verify = 15;
+  OptBool verify = 16;
+  OptBool quiet = 17;
+  OptBool verbose = 18;
+  OptBool stat = 19;
+  GpgSign gpg_sign = 20;
+  OptBool signoff = 21;
+  string strategy = 22;                 // -s <strategy>
+  repeated string strategy_option = 23; // -X <option>
+  OptBool exec = 24;                    // -x <cmd> via repeated execs below
+  repeated string execs = 25;
+  string upstream = 26;                 // positional
+  string branch = 27;                   // positional
+  OptBool reschedule_failed_exec = 28;
+  OptBool update_refs = 29;             // --[no-]update-refs
+}
+
+// ---- git reset ------------------------------------------------------------
+// git reset [--soft | --mixed | --hard | --merge | --keep] [-q] [<commit>]
+// git reset [-q] [<tree-ish>] [--] [<pathspec>...]
+// git reset --patch [<tree-ish>] [--] [<pathspec>...]
+message GitResetArguments {
+  enum Mode {
+    MODE_UNSPECIFIED = 0;
+    MODE_SOFT = 1;
+    MODE_MIXED = 2;
+    MODE_HARD = 3;
+    MODE_MERGE = 4;
+    MODE_KEEP = 5;
+  }
+  Mode mode = 1;
+  OptBool quiet = 2;
+  OptBool no_refresh = 3;
+  OptBool patch = 4;              // -p
+  string commit = 5;              // <commit> / <tree-ish>
+  Pathspec pathspec = 6;
+}
+
+// ---- git restore ----------------------------------------------------------
+message GitRestoreArguments {
+  string source = 1;                  // -s / --source=<tree>
+  OptBool patch = 2;                  // -p
+  OptBool worktree = 3;               // -W / --worktree
+  OptBool staged = 4;                 // -S / --staged
+  OptBool ours = 5;
+  OptBool theirs = 6;
+  OptBool merge = 7;                  // -m
+  string conflict_style = 8;          // --conflict=<style>
+  OptBool ignore_unmerged = 9;
+  OptBool ignore_skip_worktree_bits = 10;
+  RecurseSubmodules recurse_submodules = 11;
+  OptBool overlay = 12;
+  OptBool progress = 13;
+  OptBool quiet = 14;
+  Pathspec pathspec = 15;
+}
+
+// ---- git revert -----------------------------------------------------------
+message GitRevertArguments {
+  enum Control {
+    CONTROL_UNSPECIFIED = 0;
+    CONTROL_CONTINUE = 1;
+    CONTROL_SKIP = 2;
+    CONTROL_ABORT = 3;
+    CONTROL_QUIT = 4;
+  }
+  Control control = 1;
+
+  OptBool edit = 2;
+  OptBool no_edit = 3;            // distinct knob in git
+  string cleanup = 4;
+  int32 mainline = 5;             // -m <n>
+  OptBool no_commit = 6;          // -n
+  GpgSign gpg_sign = 7;
+  OptBool signoff = 8;
+  string strategy = 9;
+  repeated string strategy_option = 10;
+  OptBool rerere_autoupdate = 11; // --[no-]rerere-autoupdate
+  OptBool reference = 12;
+  repeated string commits = 13;
+}
+
+// ---- git rm ---------------------------------------------------------------
+message GitRmArguments {
+  OptBool force = 1;          // -f
+  OptBool dry_run = 2;        // -n
+  OptBool recursive = 3;      // -r
+  OptBool cached = 4;         // --cached
+  OptBool ignore_unmatch = 5; // --ignore-unmatch
+  OptBool sparse = 6;
+  OptBool quiet = 7;          // -q
+  Pathspec pathspec = 8;
+}
+
+// ---- git shortlog ---------------------------------------------------------
+message GitShortlogArguments {
+  OptBool numbered = 1;       // -n
+  OptBool summary = 2;        // -s
+  OptBool email = 3;          // -e
+  string format = 4;          // --format=<format>
+  int32 abbrev = 5;           // -c <n> (commit abbrev)
+  string group = 6;           // --group=<type>
+  OptBool committer = 7;
+  string range = 8;           // revision range; empty reads from stdin (we set HEAD)
+  repeated string revision_range = 9;
+  Pathspec pathspec = 10;
+}
+
+// ---- git show -------------------------------------------------------------
+// git show [<options>] <object>...
+//
+// show is log-on-a-single-object: all diff formatting + the commit-
+// formatting subset that applies when <object> is a commit. No history
+// filtering (the objects are supplied explicitly).
+message GitShowArguments {
+  // All diff-rendering knobs.
+  DiffFormatting formatting = 1;
+
+  // Commit formatting (same subset as log).
+  string pretty = 2;                // --pretty[=<format>] / --format=<format>
+  OptBool pretty_flag = 3;          // --pretty with no value
+  OptBool abbrev_commit = 4;        // --abbrev-commit
+  OptBool no_abbrev_commit = 5;
+  OptBool oneline = 6;
+  string encoding = 7;              // --encoding=<encoding>
+  OptBool expand_tabs = 8;          // --expand-tabs (flag only)
+  OptInt expand_tabs_width = 9;     // --expand-tabs=<n>
+  OptBool no_expand_tabs = 10;
+  OptBool notes = 11;               // --notes (flag only)
+  string notes_ref = 12;            // --notes=<ref>
+  OptBool no_notes = 13;
+  OptBool show_notes = 14;          // --show-notes (flag only)
+  string show_notes_ref = 15;
+  OptBool standard_notes = 16;      // --[no-]standard-notes
+  OptBool show_signature = 17;
+
+  // Diff-merges handling.
+  string diff_merges = 18;          // --diff-merges=<mode>
+  OptBool no_diff_merges = 19;
+  OptBool combined_all_paths = 20;
+  OptBool dash_t = 21;              // -t (show tree entries)
+
+  // Objects to show (commits, blobs, tags, trees).
+  repeated string objects = 22;
+}
+
+// ---- git sparse-checkout --------------------------------------------------
+message GitSparseCheckoutArguments {
+  enum Verb {
+    VERB_UNSPECIFIED = 0;
+    VERB_LIST = 1;
+    VERB_SET = 2;
+    VERB_ADD = 3;
+    VERB_REAPPLY = 4;
+    VERB_DISABLE = 5;
+    VERB_INIT = 6;     // deprecated but still supported
+    VERB_CHECK_RULES = 7;
+  }
+  Verb verb = 1;
+
+  OptBool cone = 2;           // --cone / --no-cone
+  OptBool sparse_index = 3;   // --[no-]sparse-index
+  OptBool stdin_input = 4;    // --stdin (for set/add — caller supplies patterns via stdin elsewhere)
+  OptBool skip_checks = 5;    // --skip-checks
+  repeated string patterns = 6;
+}
+
+// ---- git stash ------------------------------------------------------------
+message GitStashArguments {
+  oneof verb {
+    StashPush push = 1;
+    StashList list = 2;
+    StashShow show = 3;
+    StashDrop drop = 4;
+    StashPop pop = 5;
+    StashApply apply = 6;
+    StashBranch branch = 7;
+    StashClear clear = 8;
+    StashCreate create = 9;
+    StashStore store = 10;
+  }
+}
+message StashPush {
+  OptBool patch = 1;
+  OptBool keep_index = 2;
+  OptBool staged = 3;
+  OptBool include_untracked = 4;  // -u
+  OptBool all = 5;                // -a
+  OptBool quiet = 6;
+  string message = 7;             // -m
+  Pathspec pathspec = 8;
+}
+message StashList {
+  repeated string log_options = 1;  // passthrough to git log
+}
+message StashShow {
+  OptBool include_untracked = 1;
+  OptBool only_untracked = 2;
+  OptBool patch = 3;
+  OptBool stat = 4;
+  string stash = 5;                // stash ref, default stash@{0}
+  repeated string extra = 6;
+}
+message StashDrop {
+  OptBool quiet = 1;
+  string stash = 2;
+}
+message StashPop {
+  OptBool index = 1;
+  OptBool quiet = 2;
+  string stash = 3;
+}
+message StashApply {
+  OptBool index = 1;
+  OptBool quiet = 2;
+  string stash = 3;
+}
+message StashBranch {
+  string branch = 1;   // new branch name
+  string stash = 2;    // optional stash ref
+}
+message StashClear {}
+message StashCreate {
+  repeated string message = 1;
+}
+message StashStore {
+  string message = 1;   // -m
+  OptBool quiet = 2;
+  string commit = 3;    // object to store
+}
+
+// ---- git status -----------------------------------------------------------
+message GitStatusArguments {
+  StatusFormat format = 1;
+  OptBool branch = 2;              // -b
+  OptBool show_stash = 3;          // --show-stash
+  OptBool ahead_behind = 4;        // --[no-]ahead-behind
+  UntrackedFilesMode untracked_files = 5;
+  IgnoredMode ignored = 6;
+  OptBool no_ignored_pathspec_for_dirs = 7;  // --ignored-matching
+  OptBool z = 8;
+  string column = 9;               // --column[=<options>]
+  OptBool no_column = 10;
+  RecurseSubmodules recurse_submodules = 11;
+  OptBool verbose = 12;
+  Pathspec pathspec = 13;
+}
+
+// ---- git submodule --------------------------------------------------------
+message GitSubmoduleArguments {
+  enum Verb {
+    VERB_UNSPECIFIED = 0;   // defaults to status
+    VERB_STATUS = 1;
+    VERB_INIT = 2;
+    VERB_DEINIT = 3;
+    VERB_UPDATE = 4;
+    VERB_SUMMARY = 5;
+    VERB_FOREACH = 6;
+    VERB_SYNC = 7;
+    VERB_ADD = 8;
+    VERB_ABSORBGITDIRS = 9;
+    VERB_SET_BRANCH = 10;
+    VERB_SET_URL = 11;
+  }
+  Verb verb = 1;
+
+  OptBool quiet = 2;
+  OptBool cached = 3;
+  OptBool recursive = 4;
+  OptBool force = 5;
+  OptBool init = 6;          // update --init
+  OptBool remote = 7;         // update --remote
+  OptBool merge = 8;
+  OptBool rebase = 9;
+  OptBool checkout = 10;
+  OptBool no_fetch = 11;
+  OptBool progress = 12;
+  string branch = 13;         // set-branch --branch
+  string reference = 14;
+  string depth = 15;          // numeric string to preserve --depth=0 distinction
+  string name = 16;           // add --name <name>
+  string url = 17;            // set-url <url> / add <url>
+  repeated string paths = 18;
+  // foreach command / summary range / etc.
+  repeated string extra = 19;
+}
+
+// ---- git switch -----------------------------------------------------------
+message GitSwitchArguments {
+  OptBool quiet = 1;
+  OptBool progress = 2;
+  string create = 3;              // -c <new-branch>
+  string force_create = 4;        // -C <new-branch>
+  OptBool detach = 5;
+  BranchTrackMode track = 6;
+  OptBool guess = 7;              // --[no-]guess
+  OptBool discard_changes = 8;    // --discard-changes
+  OptBool merge = 9;              // -m
+  string conflict_style = 10;
+  string orphan = 11;
+  OptBool ignore_other_worktrees = 12;
+  RecurseSubmodules recurse_submodules = 13;
+  string start_point = 14;        // <start-point>
+  string branch = 15;             // <branch>
+}
+
+// ---- git tag --------------------------------------------------------------
+message GitTagArguments {
+  enum Action {
+    ACTION_UNSPECIFIED = 0;   // create (default) or list if no name
+    ACTION_LIST = 1;          // -l
+    ACTION_DELETE = 2;        // -d
+    ACTION_VERIFY = 3;        // -v
+  }
+  Action action = 1;
+
+  OptBool annotate = 2;          // -a
+  OptBool sign = 3;              // -s
+  GpgSign gpg_sign = 4;          // -u <keyid>
+  OptBool force = 5;             // -f
+  MessageSource message = 6;     // -m / -F
+  OptBool cleanup = 7;           // --cleanup=<mode>
+  string cleanup_mode = 8;
+  OptBool edit = 9;              // -e
+  string sort = 10;
+  string format = 11;
+  string points_at = 12;
+  string contains = 13;
+  string no_contains = 14;
+  string merged = 15;
+  string no_merged = 16;
+  ColorWhen color = 17;
+  string column = 18;
+  OptBool ignore_case = 19;
+  string create_reflog = 20;     // --[no-]create-reflog
+  repeated string patterns = 21; // list mode patterns
+  string tag_name = 22;          // create/delete/verify
+  string object = 23;            // optional object for create
+  repeated string tag_names = 24; // delete/verify accept multiple
+}
+
+// ---- git worktree ---------------------------------------------------------
+message GitWorktreeArguments {
+  enum Verb {
+    VERB_UNSPECIFIED = 0;   // defaults to list
+    VERB_LIST = 1;
+    VERB_ADD = 2;
+    VERB_REMOVE = 3;
+    VERB_MOVE = 4;
+    VERB_LOCK = 5;
+    VERB_UNLOCK = 6;
+    VERB_PRUNE = 7;
+    VERB_REPAIR = 8;
+  }
+  Verb verb = 1;
+
+  OptBool force = 2;
+  OptBool detach = 3;
+  OptBool checkout = 4;         // add --[no-]checkout
+  OptBool lock = 5;              // add --lock
+  string lock_reason = 6;        // --reason=<string>
+  string branch = 7;             // add -b <new-branch>
+  string branch_force = 8;       // add -B <new-branch>
+  string guess_remote = 9;       // --[no-]guess-remote
+  OptBool track = 10;
+  OptBool porcelain = 11;        // list --porcelain
+  OptBool z = 12;                // list -z
+  OptBool verbose = 13;
+  string expire = 14;            // prune --expire=<time>
+  OptBool dry_run = 15;          // prune -n
+  OptBool relative_paths = 16;
+  string path = 17;              // positional (add/remove/move/lock/unlock/repair)
+  string new_path = 18;          // move destination
+  string commit_ish = 19;        // add <commit-ish>
+  repeated string paths = 20;    // repair accepts multiple
+}

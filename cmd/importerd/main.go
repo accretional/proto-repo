@@ -28,7 +28,11 @@ func main() {
 	}
 	s := grpc.NewServer()
 	pb.RegisterImporterServer(s, importer.New(*scratchDir))
-	pb.RegisterSubCommandsServer(s, subcommands.New(*scratchDir))
+	sc, err := subcommands.New(*scratchDir)
+	if err != nil {
+		log.Fatalf("subcommands.New: %v", err)
+	}
+	pb.RegisterSubCommandsServer(s, sc)
 	log.Printf("importerd listening on %s (scratch=%s)", *addr, *scratchDir)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("serve: %v", err)

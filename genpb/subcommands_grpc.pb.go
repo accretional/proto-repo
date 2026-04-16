@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	SubCommands_Execute_FullMethodName        = "/subcommands.SubCommands/Execute"
 	SubCommands_Add_FullMethodName            = "/subcommands.SubCommands/Add"
 	SubCommands_Archive_FullMethodName        = "/subcommands.SubCommands/Archive"
 	SubCommands_Backfill_FullMethodName       = "/subcommands.SubCommands/Backfill"
@@ -64,6 +65,10 @@ const (
 // `git <subcommand> <args...>` inside the request's resolved repo path and
 // returns a RepoMsg carrying captured stdout/stderr and any error string.
 type SubCommandsClient interface {
+	// Execute dispatches on the Subcommand wrapper's args oneof, building the
+	// git argv from the typed fields. Equivalent to the per-subcommand RPCs
+	// below but callers don't have to know the shell-style arg format.
+	Execute(ctx context.Context, in *Subcommand, opts ...grpc.CallOption) (*RepoMsg, error)
 	Add(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Archive(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
 	Backfill(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error)
@@ -107,6 +112,16 @@ type subCommandsClient struct {
 
 func NewSubCommandsClient(cc grpc.ClientConnInterface) SubCommandsClient {
 	return &subCommandsClient{cc}
+}
+
+func (c *subCommandsClient) Execute(ctx context.Context, in *Subcommand, opts ...grpc.CallOption) (*RepoMsg, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepoMsg)
+	err := c.cc.Invoke(ctx, SubCommands_Execute_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *subCommandsClient) Add(ctx context.Context, in *SubCommandReq, opts ...grpc.CallOption) (*RepoMsg, error) {
@@ -467,6 +482,10 @@ func (c *subCommandsClient) Worktree(ctx context.Context, in *SubCommandReq, opt
 // `git <subcommand> <args...>` inside the request's resolved repo path and
 // returns a RepoMsg carrying captured stdout/stderr and any error string.
 type SubCommandsServer interface {
+	// Execute dispatches on the Subcommand wrapper's args oneof, building the
+	// git argv from the typed fields. Equivalent to the per-subcommand RPCs
+	// below but callers don't have to know the shell-style arg format.
+	Execute(context.Context, *Subcommand) (*RepoMsg, error)
 	Add(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Archive(context.Context, *SubCommandReq) (*RepoMsg, error)
 	Backfill(context.Context, *SubCommandReq) (*RepoMsg, error)
@@ -512,6 +531,9 @@ type SubCommandsServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSubCommandsServer struct{}
 
+func (UnimplementedSubCommandsServer) Execute(context.Context, *Subcommand) (*RepoMsg, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
+}
 func (UnimplementedSubCommandsServer) Add(context.Context, *SubCommandReq) (*RepoMsg, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
@@ -636,6 +658,24 @@ func RegisterSubCommandsServer(s grpc.ServiceRegistrar, srv SubCommandsServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&SubCommands_ServiceDesc, srv)
+}
+
+func _SubCommands_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Subcommand)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubCommandsServer).Execute(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubCommands_Execute_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubCommandsServer).Execute(ctx, req.(*Subcommand))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _SubCommands_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1275,6 +1315,10 @@ var SubCommands_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "subcommands.SubCommands",
 	HandlerType: (*SubCommandsServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Execute",
+			Handler:    _SubCommands_Execute_Handler,
+		},
 		{
 			MethodName: "Add",
 			Handler:    _SubCommands_Add_Handler,
