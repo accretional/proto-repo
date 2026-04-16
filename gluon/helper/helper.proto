@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package helper;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/helper/pb";
+
+// Helper wraps the "Internal Helper Commands" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_internal_helper_commands.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Helper {
+  // git-check-attr — https://git-scm.com/docs/git-check-attr
+  rpc CheckAttr(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-check-ignore — https://git-scm.com/docs/git-check-ignore
+  rpc CheckIgnore(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-check-mailmap — https://git-scm.com/docs/git-check-mailmap
+  rpc CheckMailmap(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-check-ref-format — https://git-scm.com/docs/git-check-ref-format
+  rpc CheckRefFormat(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-column — https://git-scm.com/docs/git-column
+  rpc Column(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-credential — https://git-scm.com/docs/git-credential
+  rpc Credential(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-credential-cache — https://git-scm.com/docs/git-credential-cache
+  rpc CredentialCache(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-credential-store — https://git-scm.com/docs/git-credential-store
+  rpc CredentialStore(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-fmt-merge-msg — https://git-scm.com/docs/git-fmt-merge-msg
+  rpc FmtMergeMsg(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-hook — https://git-scm.com/docs/git-hook
+  rpc Hook(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-interpret-trailers — https://git-scm.com/docs/git-interpret-trailers
+  rpc InterpretTrailers(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-mailinfo — https://git-scm.com/docs/git-mailinfo
+  rpc Mailinfo(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-mailsplit — https://git-scm.com/docs/git-mailsplit
+  rpc Mailsplit(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge-one-file — https://git-scm.com/docs/git-merge-one-file
+  rpc MergeOneFile(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-patch-id — https://git-scm.com/docs/git-patch-id
+  rpc PatchId(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-sh-i18n — https://git-scm.com/docs/git-sh-i18n
+  rpc ShI18n(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-sh-setup — https://git-scm.com/docs/git-sh-setup
+  rpc ShSetup(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-stripspace — https://git-scm.com/docs/git-stripspace
+  rpc Stripspace(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

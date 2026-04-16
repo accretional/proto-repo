@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package misc;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/misc/pb";
+
+// Misc wraps the "Other" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_other.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Misc {
+  // git-checkout — https://git-scm.com/docs/git-checkout
+  rpc Checkout(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-config — https://git-scm.com/docs/git-config
+  rpc Config(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diff — https://git-scm.com/docs/git-diff
+  rpc Diff(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-http-backend — https://git-scm.com/docs/git-http-backend
+  rpc HttpBackend(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge — https://git-scm.com/docs/git-merge
+  rpc Merge(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-prune — https://git-scm.com/docs/git-prune
+  rpc Prune(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-rebase — https://git-scm.com/docs/git-rebase
+  rpc Rebase(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-var — https://git-scm.com/docs/git-var
+  rpc Var(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package plumbing;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/plumbing/pb";
+
+// Plumbing wraps the "Plumbing Commands" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/plumbing_commands.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Plumbing {
+  // git-config — https://git-scm.com/docs/git-config
+  rpc Config(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-help — https://git-scm.com/docs/git-help
+  rpc Help(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-replace — https://git-scm.com/docs/git-replace
+  rpc Replace(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-version — https://git-scm.com/docs/git-version
+  rpc Version(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

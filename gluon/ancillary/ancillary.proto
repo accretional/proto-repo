@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package ancillary;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/ancillary/pb";
+
+// Ancillary wraps the "Ancillary Commands" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_ancillary_commands.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Ancillary {
+  // git-annotate — https://git-scm.com/docs/git-annotate
+  rpc Annotate(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-blame — https://git-scm.com/docs/git-blame
+  rpc Blame(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-bugreport — https://git-scm.com/docs/git-bugreport
+  rpc Bugreport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-config — https://git-scm.com/docs/git-config
+  rpc Config(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-count-objects — https://git-scm.com/docs/git-count-objects
+  rpc CountObjects(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diagnose — https://git-scm.com/docs/git-diagnose
+  rpc Diagnose(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-difftool — https://git-scm.com/docs/git-difftool
+  rpc Difftool(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-fast-export — https://git-scm.com/docs/git-fast-export
+  rpc FastExport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-fast-import — https://git-scm.com/docs/git-fast-import
+  rpc FastImport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-filter-branch — https://git-scm.com/docs/git-filter-branch
+  rpc FilterBranch(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-fsck — https://git-scm.com/docs/git-fsck
+  rpc Fsck(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-help — https://git-scm.com/docs/git-help
+  rpc Help(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-instaweb — https://git-scm.com/docs/git-instaweb
+  rpc Instaweb(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge-tree — https://git-scm.com/docs/git-merge-tree
+  rpc MergeTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-mergetool — https://git-scm.com/docs/git-mergetool
+  rpc Mergetool(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-pack-refs — https://git-scm.com/docs/git-pack-refs
+  rpc PackRefs(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-prune — https://git-scm.com/docs/git-prune
+  rpc Prune(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-reflog — https://git-scm.com/docs/git-reflog
+  rpc Reflog(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-refs — https://git-scm.com/docs/git-refs
+  rpc Refs(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-remote — https://git-scm.com/docs/git-remote
+  rpc Remote(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-repack — https://git-scm.com/docs/git-repack
+  rpc Repack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-replace — https://git-scm.com/docs/git-replace
+  rpc Replace(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-rerere — https://git-scm.com/docs/git-rerere
+  rpc Rerere(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-show-branch — https://git-scm.com/docs/git-show-branch
+  rpc ShowBranch(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-verify-commit — https://git-scm.com/docs/git-verify-commit
+  rpc VerifyCommit(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-verify-tag — https://git-scm.com/docs/git-verify-tag
+  rpc VerifyTag(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-version — https://git-scm.com/docs/git-version
+  rpc Version(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-whatchanged — https://git-scm.com/docs/git-whatchanged
+  rpc Whatchanged(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

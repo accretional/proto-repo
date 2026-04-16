@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package interrogation;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/interrogation/pb";
+
+// Interrogation wraps the "Interrogation Commands" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_interrogation_commands.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Interrogation {
+  // git-cat-file — https://git-scm.com/docs/git-cat-file
+  rpc CatFile(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-cherry — https://git-scm.com/docs/git-cherry
+  rpc Cherry(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diff-files — https://git-scm.com/docs/git-diff-files
+  rpc DiffFiles(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diff-index — https://git-scm.com/docs/git-diff-index
+  rpc DiffIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diff-pairs — https://git-scm.com/docs/git-diff-pairs
+  rpc DiffPairs(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-diff-tree — https://git-scm.com/docs/git-diff-tree
+  rpc DiffTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-for-each-ref — https://git-scm.com/docs/git-for-each-ref
+  rpc ForEachRef(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-for-each-repo — https://git-scm.com/docs/git-for-each-repo
+  rpc ForEachRepo(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-get-tar-commit-id — https://git-scm.com/docs/git-get-tar-commit-id
+  rpc GetTarCommitId(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-last-modified — https://git-scm.com/docs/git-last-modified
+  rpc LastModified(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-ls-files — https://git-scm.com/docs/git-ls-files
+  rpc LsFiles(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-ls-remote — https://git-scm.com/docs/git-ls-remote
+  rpc LsRemote(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-ls-tree — https://git-scm.com/docs/git-ls-tree
+  rpc LsTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge-base — https://git-scm.com/docs/git-merge-base
+  rpc MergeBase(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-name-rev — https://git-scm.com/docs/git-name-rev
+  rpc NameRev(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-pack-redundant — https://git-scm.com/docs/git-pack-redundant
+  rpc PackRedundant(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-repo — https://git-scm.com/docs/git-repo
+  rpc Repo(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-rev-list — https://git-scm.com/docs/git-rev-list
+  rpc RevList(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-rev-parse — https://git-scm.com/docs/git-rev-parse
+  rpc RevParse(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-show-index — https://git-scm.com/docs/git-show-index
+  rpc ShowIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-show-ref — https://git-scm.com/docs/git-show-ref
+  rpc ShowRef(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-unpack-file — https://git-scm.com/docs/git-unpack-file
+  rpc UnpackFile(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-var — https://git-scm.com/docs/git-var
+  rpc Var(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-verify-pack — https://git-scm.com/docs/git-verify-pack
+  rpc VerifyPack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

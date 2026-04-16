@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package syncing;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/syncing/pb";
+
+// Syncing wraps the "Syncing Repositories" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_syncing_repositories.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Syncing {
+  // git-daemon — https://git-scm.com/docs/git-daemon
+  rpc Daemon(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-fetch-pack — https://git-scm.com/docs/git-fetch-pack
+  rpc FetchPack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-http-backend — https://git-scm.com/docs/git-http-backend
+  rpc HttpBackend(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-http-fetch — https://git-scm.com/docs/git-http-fetch
+  rpc HttpFetch(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-http-push — https://git-scm.com/docs/git-http-push
+  rpc HttpPush(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-receive-pack — https://git-scm.com/docs/git-receive-pack
+  rpc ReceivePack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-send-pack — https://git-scm.com/docs/git-send-pack
+  rpc SendPack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-shell — https://git-scm.com/docs/git-shell
+  rpc Shell(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-update-server-info — https://git-scm.com/docs/git-update-server-info
+  rpc UpdateServerInfo(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-upload-archive — https://git-scm.com/docs/git-upload-archive
+  rpc UploadArchive(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-upload-pack — https://git-scm.com/docs/git-upload-pack
+  rpc UploadPack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

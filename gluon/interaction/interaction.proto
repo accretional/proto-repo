@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package interaction;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/interaction/pb";
+
+// Interaction wraps the "Interacting with Others" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_interacting_with_others.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Interaction {
+  // git-archimport — https://git-scm.com/docs/git-archimport
+  rpc Archimport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-cvsexportcommit — https://git-scm.com/docs/git-cvsexportcommit
+  rpc Cvsexportcommit(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-cvsimport — https://git-scm.com/docs/git-cvsimport
+  rpc Cvsimport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-cvsserver — https://git-scm.com/docs/git-cvsserver
+  rpc Cvsserver(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-imap-send — https://git-scm.com/docs/git-imap-send
+  rpc ImapSend(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-p4 — https://git-scm.com/docs/git-p4
+  rpc P4(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-quiltimport — https://git-scm.com/docs/git-quiltimport
+  rpc Quiltimport(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-request-pull — https://git-scm.com/docs/git-request-pull
+  rpc RequestPull(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-send-email — https://git-scm.com/docs/git-send-email
+  rpc SendEmail(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-svn — https://git-scm.com/docs/git-svn
+  rpc Svn(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

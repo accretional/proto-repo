@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package manipulation;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/manipulation/pb";
+
+// Manipulation wraps the "Manipulation Commands" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_manipulation_commands.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Manipulation {
+  // git-apply — https://git-scm.com/docs/git-apply
+  rpc Apply(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-checkout-index — https://git-scm.com/docs/git-checkout-index
+  rpc CheckoutIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-commit-graph — https://git-scm.com/docs/git-commit-graph
+  rpc CommitGraph(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-commit-tree — https://git-scm.com/docs/git-commit-tree
+  rpc CommitTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-hash-object — https://git-scm.com/docs/git-hash-object
+  rpc HashObject(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-index-pack — https://git-scm.com/docs/git-index-pack
+  rpc IndexPack(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge-file — https://git-scm.com/docs/git-merge-file
+  rpc MergeFile(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-merge-index — https://git-scm.com/docs/git-merge-index
+  rpc MergeIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-mktag — https://git-scm.com/docs/git-mktag
+  rpc Mktag(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-mktree — https://git-scm.com/docs/git-mktree
+  rpc Mktree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-multi-pack-index — https://git-scm.com/docs/git-multi-pack-index
+  rpc MultiPackIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-pack-objects — https://git-scm.com/docs/git-pack-objects
+  rpc PackObjects(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-prune-packed — https://git-scm.com/docs/git-prune-packed
+  rpc PrunePacked(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-read-tree — https://git-scm.com/docs/git-read-tree
+  rpc ReadTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-replay — https://git-scm.com/docs/git-replay
+  rpc Replay(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-symbolic-ref — https://git-scm.com/docs/git-symbolic-ref
+  rpc SymbolicRef(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-unpack-objects — https://git-scm.com/docs/git-unpack-objects
+  rpc UnpackObjects(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-update-index — https://git-scm.com/docs/git-update-index
+  rpc UpdateIndex(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-update-ref — https://git-scm.com/docs/git-update-ref
+  rpc UpdateRef(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-write-tree — https://git-scm.com/docs/git-write-tree
+  rpc WriteTree(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}

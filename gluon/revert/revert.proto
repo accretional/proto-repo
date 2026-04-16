@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package revert;
+
+import "repo.proto";
+import "subcommands.proto";
+
+option go_package = "github.com/accretional/proto-repo/gluon/revert/pb";
+
+// Revert wraps the "Reset, Restore and Revert" section of https://git-scm.com/docs/git.
+// Generated from docs/git-links/_reset_restore_and_revert.csv; do not edit by hand. Re-run
+// `go run ./cmd/stubgen` to refresh.
+service Revert {
+  // git-reset — https://git-scm.com/docs/git-reset
+  rpc Reset(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-restore — https://git-scm.com/docs/git-restore
+  rpc Restore(subcommands.SubCommandReq) returns (repo.RepoMsg);
+  // git-revert — https://git-scm.com/docs/git-revert
+  rpc Revert(subcommands.SubCommandReq) returns (repo.RepoMsg);
+}
