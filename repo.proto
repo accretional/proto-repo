@@ -14,6 +14,7 @@ message RepoSource {
   oneof source {
     string uri = 1;
     GithubRepo gh = 2;
+    RepoPath path = 3;
   }
 }
 
@@ -29,7 +30,33 @@ message RepoList {
   repeated Repo repos = 1;
 }
 
+message RepoPath {
+  string path = 1;
+}
+
+message RepoLogs {
+  repeated string line = 1;
+}
+
+message RepoMsg {
+  Repo repo = 1;
+  RepoLogs stdout = 2;
+  RepoLogs stderr = 3;
+  repeated string errs = 4;
+}
+
+message MultiRepoZip {
+  RepoList repos = 1;
+  string path = 2;
+  sint64 size = 3;
+  int32 num_files = 4;
+}
+
 service Importer {
   // Local URI by default
-  rpc Download(RepoList) returns (RepoSource);
+  rpc Download(RepoList) returns (stream RepoMsg);
+  rpc Clone(RepoList) returns (stream RepoMsg);
+  rpc Where(RepoList) returns (stream RepoPath);
+  rpc Pull(RepoList) returns(stream RepoMsg);
+  rpc Zip(RepoList) returns(MultiRepoZip);
 }
