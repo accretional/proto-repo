@@ -47,3 +47,6 @@ go.work.sum
 
 # Generated pb/ dirs under each gluon/ service (refreshed by GLUON_EXAMPLE.sh).
 /gluon/*/pb/
+
+# Generated pb/ dir under gitfs/ (refreshed by build.sh).
+/gitfs/pb/

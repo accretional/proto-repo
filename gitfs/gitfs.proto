@@ -1,0 +1,305 @@
+syntax = "proto3";
+
+// gitfs encodes the on-disk structure of a Git repository (.git directory)
+// as protocol buffer messages. Companion to GIT_DEEPDIVE.md, which gives
+// the byte-level reasoning behind each field.
+//
+// Two layers:
+//   * content   — Object / Ref / PackedRefs.   Reproducible across clones.
+//   * local     — Index / Reflog / Config / LocalState. Not transferred.
+package gitfs;
+
+option go_package = "github.com/accretional/proto-repo/gitfs/pb";
+
+// ---------------------------------------------------------------------------
+// Object store
+// ---------------------------------------------------------------------------
+
+// ObjectType mirrors the type prefix in a loose object's framing header
+// ("commit ", "tree ", "blob ", "tag "), and the 3-bit type field in a
+// packed object header (values 1-4).
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0;
+  COMMIT = 1;
+  TREE = 2;
+  BLOB = 3;
+  TAG = 4;
+}
+
+// Object is the universal envelope. The SHA-1 in `sha1` is taken over the
+// uncompressed framing bytes "<type> <size>\0<body>"; this lets a verifier
+// recompute identity from the typed body.
+message Object {
+  bytes sha1 = 1;            // 20 raw bytes
+  ObjectType type = 2;
+  oneof body {
+    Blob blob = 3;
+    Tree tree = 4;
+    Commit commit = 5;
+    Tag tag = 6;
+  }
+}
+
+message Blob {
+  bytes content = 1;         // uninterpreted file content
+}
+
+message Tree {
+  repeated TreeEntry entries = 1;
+}
+
+// TreeEntry is one row inside a tree object: "<octal-mode> <name>\0<sha20>".
+// Mode is stored as the integer value of the octal string (e.g. 0o100644
+// → 33188); the parser also exposes the canonical octal string for display.
+message TreeEntry {
+  uint32 mode = 1;
+  string name = 2;
+  bytes sha1 = 3;            // 20 raw bytes
+}
+
+// Commit holds the parsed line-oriented commit body. Unknown header fields
+// land in `extra_headers` to preserve round-trip fidelity (e.g. `gpgsig`,
+// `mergetag`, `encoding`).
+message Commit {
+  bytes tree_sha1 = 1;       // 20 raw bytes
+  repeated bytes parent_sha1s = 2;
+  Signature author = 3;
+  Signature committer = 4;
+  string message = 5;
+  repeated CommitHeader extra_headers = 6;
+}
+
+// CommitHeader preserves a line-oriented header git doesn't strictly require
+// for content addressing but that participates in the SHA-1 (so dropping it
+// would change the commit's identity).
+message CommitHeader {
+  string key = 1;
+  // value is the unfolded value (continuation lines joined by "\n", with
+  // the leading space stripped per RFC 822 folding rules).
+  string value = 2;
+}
+
+// Tag is an annotated tag object. Lightweight tags don't have one — they
+// are only refs/tags/<name> entries pointing directly at a commit.
+message Tag {
+  bytes object_sha1 = 1;
+  ObjectType target_type = 2;
+  string name = 3;
+  Signature tagger = 4;
+  string message = 5;
+}
+
+// Signature is the "Name <email> <unix-ts> <tz>" tuple used in commits,
+// tags, and reflog entries. tz_offset is the literal token from the file
+// (e.g. "-0700", "+0530", "Z" for UTC) — kept as text because git itself
+// preserves the author's local offset rather than normalizing.
+message Signature {
+  string name = 1;
+  string email = 2;
+  int64 unix_seconds = 3;
+  string tz_offset = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Refs
+// ---------------------------------------------------------------------------
+
+// Ref is the resolved (or unresolved) target of a name like
+// "refs/heads/main" or "HEAD". Symbolic refs carry the literal "ref: <name>"
+// target instead of a sha; the resolver follows the chain.
+message Ref {
+  string name = 1;           // e.g. "HEAD", "refs/heads/main"
+  oneof target {
+    bytes sha1 = 2;          // 20 raw bytes (direct ref)
+    string symbolic_ref = 3; // e.g. "refs/heads/main" (no "ref: " prefix)
+  }
+}
+
+// PackedRefs models the .git/packed-refs file. peeled_sha1, when set, is
+// the underlying commit SHA an annotated tag points at — the optional
+// "^<sha>" line that follows certain entries in fully-peeled packs.
+message PackedRefs {
+  // header_traits captures the comma-separated tokens in the
+  // "# pack-refs with: …" first line (e.g. "peeled", "fully-peeled",
+  // "sorted"). Their presence/absence affects how a reader treats the
+  // body.
+  repeated string header_traits = 1;
+  repeated PackedRef refs = 2;
+}
+
+message PackedRef {
+  string name = 1;
+  bytes sha1 = 2;
+  bytes peeled_sha1 = 3;     // optional; only set for annotated tags in
+                             // a fully-peeled pack.
+}
+
+// ---------------------------------------------------------------------------
+// Index (.git/index)
+// ---------------------------------------------------------------------------
+
+// Index models the staging area. version is 2, 3, or 4. The stored
+// trailing SHA-1 (`trailer_sha1`) is the SHA over all preceding bytes; the
+// parser verifies it.
+message Index {
+  uint32 version = 1;
+  repeated IndexEntry entries = 2;
+  repeated IndexExtension extensions = 3;
+  bytes trailer_sha1 = 4;
+}
+
+// IndexEntry — see GIT_DEEPDIVE.md §4.1 for byte layout. stat fields are
+// advisory: git uses them to skip rehashing files whose stat() output
+// matches, but they're not part of git's content identity.
+message IndexEntry {
+  uint32 ctime_seconds = 1;
+  uint32 ctime_nanoseconds = 2;
+  uint32 mtime_seconds = 3;
+  uint32 mtime_nanoseconds = 4;
+  uint32 dev = 5;
+  uint32 ino = 6;
+  uint32 mode = 7;
+  uint32 uid = 8;
+  uint32 gid = 9;
+  uint32 size = 10;
+  bytes sha1 = 11;           // 20 raw bytes
+
+  // flags are the parsed bit-field from the 16-bit `flags` word:
+  bool assume_valid = 12;
+  bool extended = 13;        // v3+: signals an additional ext_flags word
+  uint32 stage = 14;         // 0 = normal; 1/2/3 = base/ours/theirs (merge)
+  uint32 ext_flags = 15;     // raw 16-bit ext field (v3+ only)
+
+  string name = 16;
+}
+
+// IndexExtension stores the raw bytes of a single index extension chunk
+// (TREE, REUC, link, FSMN, UNTR, EOIE, IEOT, …). Decoding TREE/REUC into
+// structured form is left to a higher layer — the on-disk shape is what
+// matters for round-trip.
+message IndexExtension {
+  bytes signature = 1;       // 4 bytes (e.g. "TREE")
+  bytes data = 2;            // raw extension body (length-prefix already
+                             //   consumed by the parser)
+}
+
+// ---------------------------------------------------------------------------
+// Reflog
+// ---------------------------------------------------------------------------
+
+// Reflog is one logs/<refname> file: append-only log of where the ref
+// pointed and why. The path is stored so a Repository can carry many.
+message Reflog {
+  string ref_path = 1;       // e.g. "HEAD" or "refs/heads/main"
+  repeated ReflogEntry entries = 2;
+}
+
+message ReflogEntry {
+  bytes old_sha1 = 1;        // 20 raw bytes; all-zero for ref creation
+  bytes new_sha1 = 2;        // 20 raw bytes; all-zero for ref deletion
+  Signature who = 3;
+  string message = 4;        // text after the TAB, newline stripped
+}
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+// Config encodes one config file (.git/config, ~/.gitconfig, etc.).
+// Hierarchy/merging is a layer above this representation.
+message Config {
+  repeated ConfigSection sections = 1;
+}
+
+// ConfigSection: one [section "subsection"] block. subsection is empty for
+// bare [section]. Keys are case-insensitive in git itself; here we preserve
+// the file's casing.
+message ConfigSection {
+  string name = 1;           // e.g. "core", "remote", "branch"
+  string subsection = 2;     // e.g. "origin"; empty if none
+  repeated ConfigVariable variables = 3;
+}
+
+message ConfigVariable {
+  string name = 1;
+  string value = 2;          // unquoted, with line continuations resolved
+}
+
+// ---------------------------------------------------------------------------
+// Packfiles
+// ---------------------------------------------------------------------------
+
+// PackHeader is the 12-byte header at the start of a .pack file. The full
+// packed-object body is intentionally *not* exploded into protos here —
+// it's denser than loose form and is best handled by either keeping the
+// raw .pack bytes or unpacking it object-by-object into Object messages
+// for whatever subset is needed.
+message PackHeader {
+  uint32 version = 1;        // typically 2
+  uint32 object_count = 2;
+  bytes pack_sha1 = 3;       // 20-byte trailing SHA of the .pack file
+}
+
+// PackIndex is the parsed .idx file (version 2). The fanout array has
+// exactly 256 entries: fanout[i] = count of objects whose first SHA byte
+// is ≤ i. Used to narrow the binary search before consulting `sha1s`.
+message PackIndex {
+  uint32 version = 1;        // 2 (legacy v1 has no magic; this proto
+                             //   models v2 only)
+  repeated uint32 fanout = 2;          // 256 entries
+  repeated bytes sha1s = 3;            // sorted; len == fanout[255]
+  repeated uint32 crc32s = 4;          // packed object CRC32
+  repeated uint64 offsets = 5;         // offset into the .pack
+  bytes pack_sha1 = 6;                 // SHA of the .pack file (trailing)
+  bytes idx_sha1 = 7;                  // SHA over preceding bytes of .idx
+}
+
+message Pack {
+  string name = 1;           // basename without extension, e.g. "pack-728a…"
+  PackHeader header = 2;
+  PackIndex index = 3;
+  // Optional explosion: when a caller wants the contents materialized,
+  // resolved (deltas applied) objects land here. Empty when only the
+  // header/index were parsed.
+  repeated Object objects = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Local state (operational; not transferred by clone/fetch/push)
+// ---------------------------------------------------------------------------
+
+// LocalState collects the assorted single-line files git uses to track
+// ongoing operations. All fields are optional — most are absent in a
+// quiescent repo.
+message LocalState {
+  bytes orig_head_sha1 = 1;
+  bytes fetch_head = 2;      // raw bytes — the file is multi-line
+  bytes merge_head_sha1 = 3;
+  string merge_msg = 4;
+  string merge_mode = 5;
+  string commit_editmsg = 6;
+  string description = 7;
+  string info_exclude = 8;
+  bytes shallow = 9;         // raw lines if a shallow clone
+}
+
+// ---------------------------------------------------------------------------
+// Repository (top-level container)
+// ---------------------------------------------------------------------------
+
+// Repository is a snapshot of one .git directory at a point in time.
+// Designed for round-trip: a serialized Repository plus the working tree
+// hash should reproduce the directory exactly (modulo file timestamps and
+// pack repacking, which are not content-bearing).
+message Repository {
+  string git_dir = 1;        // absolute path the snapshot was taken from
+  Ref head = 2;              // the .git/HEAD ref
+  repeated Ref loose_refs = 3;
+  PackedRefs packed_refs = 4;
+  repeated Object loose_objects = 5;
+  repeated Pack packs = 6;
+  Index index = 7;
+  repeated Reflog reflogs = 8;
+  Config config = 9;
+  LocalState local_state = 10;
+}
